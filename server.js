@@ -741,5 +741,8 @@ function buildSummary(selections) {
 
 // ============================================================
 // START
-// ============================================================
+app.get("/privacy", (req, res) => {
+  res.send("<h1>Chef Papi Privacy Policy</h1><p>We collect your name, phone number, and delivery address solely to process your food orders. We do not share your information with third parties except for delivery purposes. Contact: frank@integra-foods.com</p>");
+});
+
 app.listen(PORT, () => console.log(`🍗 Chef Papi v2 running on port ${PORT}`));
