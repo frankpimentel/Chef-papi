@@ -154,14 +154,13 @@ async function handleMessage(phone, input) {
 
   // Route based on state
   switch (session.state) {
-    case "AWAITING_PACK":
-      // Only respond to valid pack sizes, otherwise show welcome again
+case "AWAITING_PACK":
       if (["3","5","10"].includes(input)) {
         await handlePackSelection(phone, session, input);
       } else if (isQuestion(input)) {
         const answer = await askAI(input);
         await sendMessage(phone, answer);
-        await sendHumanButton(phone);
+        await sendWelcome(phone);
       } else {
         await sendWelcome(phone);
       }
