@@ -169,14 +169,19 @@ async function handleMessage(phone, input) {
   }
 
   // If in DONE state or no active order, check if question or new order
-  if (session.state === "DONE" || session.state === "AWAITING_PACK") {
+  if (session.state === "AWAITING_PACK") {
+    await sendWelcome(phone);
+    return;
+  }
+
+  if (session.state === "DONE") {
     if (isQuestion(input) && !["3","5","10"].includes(input)) {
       const answer = await askAI(input);
       await sendMessage(phone, answer);
       await sendHumanButton(phone);
       return;
     }
-  }
+  
 
   switch (session.state) {
     case "AWAITING_PACK":
