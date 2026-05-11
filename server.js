@@ -999,7 +999,10 @@ async function notifyMBE(order, orderNum) {
       .join(", ");
     const now = getSDTime();
     const pad = n => String(n).padStart(2, "0");
-    const timeStr = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())} (Santo Domingo)`;
+    const hours24 = now.getHours();
+    const hours12 = hours24 % 12 || 12;
+    const ampm = hours24 < 12 ? "AM" : "PM";
+    const timeStr = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())} ${hours12}:${pad(now.getMinutes())}:${pad(now.getSeconds())} ${ampm} (Santo Domingo)`;
 
     await fetch(SHEETS_WEBHOOK, {
       method: "POST",
