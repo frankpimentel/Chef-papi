@@ -4,60 +4,65 @@
 -- ============================================================
 
 -- CUSTOMERS
-create table customers (
+create table if not exists customers (
   id                bigint generated always as identity primary key,
   whatsapp_phone    text unique not null,
   name              text,
   delivery_address  text,
+  rnc               text,
+  company_name      text,
   created_at        timestamptz default now()
 );
 
 -- ORDERS
-create table orders (
-  id                bigint generated always as identity primary key,
-  customer_id       bigint references customers(id),
-  pack_size         int not null check (pack_size in (3, 5, 10)),
-  total_price       int not null,
-  status            text not null default 'pending'
-                    check (status in ('pending', 'paid', 'sent', 'delivered', 'cancelled')),
-  delivery_address  text,
-  cardnet_ref       text,
-  logistics_ref     text,
-  created_at        timestamptz default now()
+create table if not exists orders (
+  id                  bigint generated always as identity primary key,
+  customer_id         bigint references customers(id),
+  pack_size           int not null check (pack_size in (3, 5, 8)),
+  total_price         int not null,
+  status              text not null default 'pending'
+                      check (status in ('pending', 'paid', 'sent', 'delivered', 'cancelled')),
+  delivery_address    text,
+  delivery_zone       text,
+  estimated_delivery  text,
+  cardnet_ref         text,
+  logistics_ref       text,
+  created_at          timestamptz default now()
 );
 
 -- ORDER ITEMS
-create table order_items (
+create table if not exists order_items (
   id           bigint generated always as identity primary key,
   order_id     bigint references orders(id) on delete cascade,
   unit_number  int not null,
   flavor       text not null
-               check (flavor in ('none', 'pomodoro', 'pesto', 'aglio', 'teriyaki', 'bbq'))
+               check (flavor in ('natural', 'pomodoro', 'pesto', 'bbq'))
 );
 
 -- SESSIONS (tracks WhatsApp conversation state per customer)
-create table sessions (
+create table if not exists sessions (
   phone          text primary key,
-  state          text not null default 'AWAITING_PACK',
+  state          text not null default 'AWAITING_ZONE',
   pending_order  jsonb,
   updated_at     timestamptz default now()
 );
 
--- FLAVORS (optional — useful to toggle availability)
-create table flavors (
-  id          text primary key,
-  title       text not null,
-  emoji       text,
-  available   boolean default true
+-- PROCESSED MESSAGES (deduplication)
+create table if not exists processed_messages (
+  id          bigint generated always as identity primary key,
+  message_id  text unique not null,
+  created_at  timestamptz default now()
 );
 
-insert into flavors (id, title, emoji) values
-  ('none',     'Sin Sabor', '🍗'),
-  ('pomodoro', 'Pomodoro',  '🍅'),
-  ('pesto',    'Pesto',     '🌿'),
-  ('aglio',    'Aglio',     '🧄'),
-  ('teriyaki', 'Teriyaki',  '🥢'),
-  ('bbq',      'Barbecue',  '🔥');
+-- ── ALTER STATEMENTS (run if tables already exist) ────────────
+
+-- Add missing columns to customers
+alter table customers add column if not exists rnc text;
+alter table customers add column if not exists company_name text;
+
+-- Add missing columns to orders
+alter table orders add column if not exists delivery_zone text;
+alter table orders add column if not exists estimated_delivery text;
 
 -- ── USEFUL QUERIES ────────────────────────────────────────────
 

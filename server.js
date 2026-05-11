@@ -794,13 +794,6 @@ async function handleAddressInput(phone, session, input) {
     return;
   }
 
-  if (name) {
-    await upsertCustomer(phone, { name, delivery_address: input, rnc, company_name });
-  } else {
-    const customer = await getCustomer(phone);
-    if (customer) await upsertCustomer(phone, { name: customer.name, delivery_address: input, rnc, company_name });
-  }
-
   const delivery = getDeliveryMessage(zone);
   const updatedOrder = {
     ...session.pending_order,
@@ -808,8 +801,64 @@ async function handleAddressInput(phone, session, input) {
     delivery_zone: extractSector(input),
     estimated_delivery: delivery ? delivery.estimated : "Por confirmar",
   };
+  await updateSession(phone, { state: "AWAITING_ADDRESS_TYPE", pending_order: updatedOrder });
+  await sendAddressTypeButtons(phone);
+}
+
+async function handleAddressType(phone, session, input) {
+  if (input === "type_casa") {
+    await updateSession(phone, { state: "AWAITING_REFERENCE", pending_order: { ...session.pending_order, address_type: "casa" } });
+    await sendMessage(phone, "📍 ¿Alguna referencia para encontrar tu casa?\n\nEjemplo: _Frente al colmado Don Pepe, casa verde_");
+  } else if (input === "type_apto") {
+    await updateSession(phone, { state: "AWAITING_TOWER", pending_order: { ...session.pending_order, address_type: "apto" } });
+    await sendMessage(phone, "🏢 ¿Cómo se llama el edificio o torre?");
+  } else {
+    await sendAddressTypeButtons(phone);
+  }
+}
+
+async function handleTowerInput(phone, session, input) {
+  if (input.length < 2) {
+    await sendMessage(phone, "Escribe el nombre del edificio o torre 👇");
+    return;
+  }
+  await updateSession(phone, { state: "AWAITING_REFERENCE", pending_order: { ...session.pending_order, tower: input } });
+  await sendMessage(phone, "📍 ¿Número de apartamento o piso?\n\nEjemplo: _Apto 3B, Piso 4_");
+}
+
+async function handleReferenceInput(phone, session, input) {
+  if (input.length < 2) {
+    await sendMessage(phone, "Escribe una referencia 👇");
+    return;
+  }
+
+  let fullAddress = session.pending_order.delivery_address;
+  if (session.pending_order.tower) fullAddress += `, ${session.pending_order.tower}`;
+  fullAddress += ` (Ref: ${input})`;
+
+  const name = session.pending_order?.customer_name;
+  const rnc  = session.pending_order?.rnc;
+  const company_name = session.pending_order?.company_name;
+  if (name) {
+    await upsertCustomer(phone, { name, delivery_address: fullAddress, rnc, company_name });
+  } else {
+    const customer = await getCustomer(phone);
+    if (customer) await upsertCustomer(phone, { name: customer.name, delivery_address: fullAddress, rnc, company_name });
+  }
+
+  const updatedOrder = { ...session.pending_order, delivery_address: fullAddress };
   await updateSession(phone, { state: "AWAITING_NCF", pending_order: updatedOrder });
   await sendNCFButtons(phone);
+}
+
+async function handleDeliveryConfirm(phone, session, input) {
+  if (input === "delivery_yes") {
+    await updateSession(phone, { state: "AWAITING_NCF" });
+    await sendNCFButtons(phone);
+  } else {
+    await createSession(phone);
+    await sendZoneCheck(phone);
+  }
 }
 
 async function handleReorderOrNew(phone, session, input) {
