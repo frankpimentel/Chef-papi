@@ -631,8 +631,7 @@ async function handleQtyInput(phone, session, input) {
 
 async function handleConfirmation(phone, session, input) {
   if (input === "confirm") {
-    await updateSession(phone, { state: "AWAITING_NCF" });
-    await sendNCFButtons(phone);
+    await continueToCustomerInfo(phone, session);
   } else if (input === "change") {
     const size = session.pending_order.pack_size;
     await updateSession(phone, {
@@ -648,7 +647,7 @@ async function handleNCFSelection(phone, session, input) {
   if (input === "ncf_b02") {
     const updatedOrder = { ...session.pending_order, ncf_type: "B02" };
     await updateSession(phone, { pending_order: updatedOrder });
-    await continueToCustomerInfo(phone, { ...session, pending_order: updatedOrder });
+    await createOrderAndCharge(phone, { ...session, pending_order: updatedOrder });
   } else if (input === "ncf_b01") {
     // Check if returning customer has saved company
     const customer = await getCustomer(phone);
@@ -696,7 +695,7 @@ async function handleCompanyNameInput(phone, session, input) {
       .update({ rnc: updatedOrder.rnc, company_name: input })
       .eq("whatsapp_phone", phone);
   }
-  await continueToCustomerInfo(phone, { ...session, pending_order: updatedOrder });
+  await createOrderAndCharge(phone, { ...session, pending_order: updatedOrder });
 }
 
 async function handleCompanyConfirm(phone, session, input) {
@@ -708,7 +707,7 @@ async function handleCompanyConfirm(phone, session, input) {
       company_name: customer.company_name,
     };
     await updateSession(phone, { pending_order: updatedOrder });
-    await continueToCustomerInfo(phone, { ...session, pending_order: updatedOrder });
+    await createOrderAndCharge(phone, { ...session, pending_order: updatedOrder });
   } else if (input === "new_company") {
     await updateSession(phone, { state: "AWAITING_RNC" });
     await sendMessage(phone, "💼 ¿Cuál es el nuevo *RNC* de tu empresa?");
@@ -755,7 +754,6 @@ async function handleAddressInput(phone, session, input) {
   if (input === "same_address") {
     const customer = await getCustomer(phone);
     const addr = customer.delivery_address;
-    // Check delivery zone for same address
     const zone = checkDeliveryZone(addr);
     const delivery = getDeliveryMessage(zone);
     const updatedOrder = {
@@ -764,8 +762,8 @@ async function handleAddressInput(phone, session, input) {
       delivery_zone: extractSector(addr),
       estimated_delivery: delivery ? delivery.estimated : "Por confirmar",
     };
-    await updateSession(phone, { pending_order: updatedOrder });
-    await createOrderAndCharge(phone, { ...session, pending_order: updatedOrder }, addr);
+    await updateSession(phone, { state: "AWAITING_NCF", pending_order: updatedOrder });
+    await sendNCFButtons(phone);
     return;
   }
   if (input === "new_address") {
@@ -803,7 +801,6 @@ async function handleAddressInput(phone, session, input) {
     if (customer) await upsertCustomer(phone, { name: customer.name, delivery_address: input, rnc, company_name });
   }
 
-  // Check zone and continue order
   const delivery = getDeliveryMessage(zone);
   const updatedOrder = {
     ...session.pending_order,
@@ -811,8 +808,8 @@ async function handleAddressInput(phone, session, input) {
     delivery_zone: extractSector(input),
     estimated_delivery: delivery ? delivery.estimated : "Por confirmar",
   };
-  await updateSession(phone, { pending_order: updatedOrder });
-  await createOrderAndCharge(phone, { ...session, pending_order: updatedOrder }, input);
+  await updateSession(phone, { state: "AWAITING_NCF", pending_order: updatedOrder });
+  await sendNCFButtons(phone);
 }
 
 async function handleReorderOrNew(phone, session, input) {
