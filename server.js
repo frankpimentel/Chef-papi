@@ -1545,12 +1545,17 @@ app.get("/admin", async (req, res) => {
   try {
     const week = getWeekRange(req.query.week);
 
-    const { data: orders } = await supabase
+    const { data: allWeekOrders } = await supabase
       .from("orders")
       .select("*, customers(*), order_items(*)")
       .gte("created_at", week.startISO)
       .lt("created_at", week.endISO)
       .order("created_at", { ascending: false });
+
+    const tab            = req.query.tab || "active";
+    const activeOrders   = (allWeekOrders || []).filter(o => o.status !== "cancelled");
+    const cancelledOrders= (allWeekOrders || []).filter(o => o.status === "cancelled");
+    const orders         = tab === "cancelled" ? cancelledOrders : activeOrders;
 
     const statusColor = s => {
       if (s === "entregado") return "#22c55e";
@@ -1586,6 +1591,7 @@ app.get("/admin", async (req, res) => {
           </div>` : "";
         return `
           <tr id="row-${o.id}" style="border-bottom:1px solid #2a2a2a">
+            <td><input type="checkbox" class="order-cb" data-id="${o.id}" onchange="updateBulkBtn()" style="cursor:pointer;width:15px;height:15px"/></td>
             <td style="font-weight:bold">${orderNum}</td>
             <td>${o.customers?.name || "-"}</td>
             <td>${o.customers?.whatsapp_phone || "-"}</td>
@@ -1650,6 +1656,44 @@ app.get("/admin", async (req, res) => {
           .empty { text-align:center; color:#555; padding:60px 20px; font-size:16px; }
         </style>
         <script>
+          function updateBulkBtn() {
+            const count = document.querySelectorAll('.order-cb:checked').length;
+            const btn = document.getElementById('bulk-delete-btn');
+            if (!btn) return;
+            btn.style.display = count > 0 ? 'inline-block' : 'none';
+            btn.textContent = '🗑️ Eliminar seleccionadas (' + count + ')';
+          }
+
+          function toggleAll(master) {
+            document.querySelectorAll('.order-cb').forEach(cb => cb.checked = master.checked);
+            updateBulkBtn();
+          }
+
+          async function bulkDelete(pass) {
+            const checked = Array.from(document.querySelectorAll('.order-cb:checked'));
+            if (!checked.length) { alert('Selecciona al menos una orden.'); return; }
+            if (!confirm('⚠️ ¿Eliminar ' + checked.length + ' orden(es)? Esta acción no se puede deshacer.')) return;
+            const pwd = prompt('Contraseña para confirmar:');
+            if (!pwd) return;
+            if (pwd !== pass) { alert('Contraseña incorrecta.'); return; }
+            const ids = checked.map(cb => parseInt(cb.dataset.id));
+            try {
+              const res = await fetch('/admin/bulk-delete', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ order_ids: ids, pass })
+              });
+              const data = await res.json();
+              if (data.ok) {
+                checked.forEach(cb => { const row = cb.closest('tr'); if (row) row.remove(); });
+                updateBulkBtn();
+                document.querySelectorAll('input[type=checkbox]').forEach(cb => cb.checked = false);
+              } else {
+                alert('Error: ' + (data.error || 'Unknown'));
+              }
+            } catch(e) { alert('Error de conexión'); }
+          }
+
           async function deleteOrder(orderId, orderNum, pass) {
             if (!confirm('⚠️ ¿Eliminar la orden ' + orderNum + '? Esta acción no se puede deshacer.')) return;
             const pwd = prompt('Escribe tu contraseña para confirmar:');
@@ -1704,7 +1748,23 @@ app.get("/admin", async (req, res) => {
           ${nextLink}
           <a class="nav-btn" href="/admin?pass=${pass}">Hoy</a>
           <a class="action-btn" href="/admin/analytics?pass=${pass}">📊 Análisis mensual</a>
-          <a class="nav-btn" href="/admin?pass=${pass}&week=${req.query.week||''}">🔄 Actualizar</a>
+          <a class="nav-btn" href="/admin?pass=${pass}&week=${req.query.week||''}&tab=${tab}">🔄 Actualizar</a>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap">
+          <a href="/admin?pass=${pass}&week=${req.query.week||''}&tab=active"
+            style="padding:7px 18px;border-radius:20px;font-size:13px;text-decoration:none;font-weight:bold;
+              ${tab==="active" ? "background:#f97316;color:white" : "background:#222;color:#aaa"}">
+            ✅ Activas (${activeOrders.length})
+          </a>
+          <a href="/admin?pass=${pass}&week=${req.query.week||''}&tab=cancelled"
+            style="padding:7px 18px;border-radius:20px;font-size:13px;text-decoration:none;font-weight:bold;
+              ${tab==="cancelled" ? "background:#ef4444;color:white" : "background:#222;color:#aaa"}">
+            ❌ Canceladas (${cancelledOrders.length})
+          </a>
+          <button id="bulk-delete-btn" onclick="bulkDelete('${pass}')"
+            style="display:none;background:#ef4444;color:white;border:none;padding:7px 16px;border-radius:20px;font-size:13px;cursor:pointer;font-weight:bold">
+            🗑️ Eliminar seleccionadas (0)
+          </button>
         </div>
         <div class="stats">
           <div class="stat"><div class="stat-num">${(orders||[]).length}</div><div class="stat-label">Órdenes esta semana</div></div>
@@ -1715,6 +1775,7 @@ app.get("/admin", async (req, res) => {
         ${(orders||[]).length === 0 ? `<div class="empty">No hay órdenes esta semana.</div>` : `
         <table>
           <thead><tr>
+            <th><input type="checkbox" onchange="toggleAll(this)" style="cursor:pointer;width:15px;height:15px"/></th>
             <th>Orden</th><th>Cliente</th><th>Teléfono</th><th>Dirección</th>
             <th>Items</th><th>Pack</th><th>Total</th><th>Zona</th>
             <th>Entrega</th><th>Estado / Acción</th><th>Hora</th><th></th>
@@ -1936,6 +1997,26 @@ app.post("/admin/deliver", async (req, res) => {
     res.json({ ok: true });
   } catch (err) {
     console.error("Deliver error:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ============================================================
+// ADMIN BULK DELETE ENDPOINT
+// ============================================================
+app.post("/admin/bulk-delete", async (req, res) => {
+  const { order_ids, pass } = req.body;
+  if (pass !== (process.env.ADMIN_PASSWORD || "chefpapi2024")) {
+    return res.status(403).json({ error: "No autorizado" });
+  }
+  if (!Array.isArray(order_ids) || order_ids.length === 0) {
+    return res.status(400).json({ error: "No order IDs provided" });
+  }
+  try {
+    await supabase.from("orders").delete().in("id", order_ids);
+    res.json({ ok: true, deleted: order_ids.length });
+  } catch (err) {
+    console.error("Bulk delete error:", err);
     res.status(500).json({ error: err.message });
   }
 });
