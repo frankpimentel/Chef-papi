@@ -1517,37 +1517,64 @@ app.get("/admin", async (req, res) => {
       return "#6b7280";
     };
 
-    const rows = (orders || []).map(o => {
-      const flavors = (o.order_items || []).map(i => `${FLAVORS[i.flavor]?.emoji || ""} ${FLAVORS[i.flavor]?.title || i.flavor}`).join(", ");
-      const date    = new Date(o.created_at).toLocaleString("es-DO", { timeZone: "America/Santo_Domingo" });
-      const orderNum = `CP-${String(o.id).padStart(5,"0")}`;
-      const canDeliver = ["paid", "sent"].includes(o.status);
-      const deliverBtn = canDeliver ? `
-        <div style="display:flex;gap:6px;align-items:center;margin-top:6px">
-          <input id="track-${o.id}" type="text" placeholder="Link MBE (opcional)"
-            style="padding:5px 8px;border-radius:6px;border:none;background:#333;color:#eee;font-size:11px;width:180px"/>
-          <button onclick="marcarEntregado(${o.id},'${orderNum}','${o.customers?.whatsapp_phone || ""}','${pass}')"
-            style="background:#22c55e;color:white;border:none;padding:5px 10px;border-radius:6px;font-size:11px;cursor:pointer;white-space:nowrap">
-            🛵 Marcar Entregado
-          </button>
-        </div>` : "";
+    // Group orders by day
+    const byDay = {};
+    for (const o of (orders || [])) {
+      const dayKey = new Date(o.created_at).toLocaleDateString("es-DO", { timeZone: "America/Santo_Domingo", weekday: "long", year: "numeric", month: "long", day: "numeric" });
+      if (!byDay[dayKey]) byDay[dayKey] = [];
+      byDay[dayKey].push(o);
+    }
+
+    const rows = Object.entries(byDay).map(([day, dayOrders]) => {
+      const dayRevenue = dayOrders.filter(o => ["paid","entregado"].includes(o.status)).reduce((s, o) => s + (o.total_price || 0), 0);
+      const orderRows = dayOrders.map(o => {
+        const flavors  = (o.order_items || []).map(i => `${FLAVORS[i.flavor]?.emoji || ""} ${FLAVORS[i.flavor]?.title || i.flavor}`).join(", ");
+        const timeOnly = new Date(o.created_at).toLocaleTimeString("es-DO", { timeZone: "America/Santo_Domingo", hour: "2-digit", minute: "2-digit" });
+        const orderNum = `CP-${String(o.id).padStart(5,"0")}`;
+        const canDeliver = ["paid", "sent"].includes(o.status);
+        const deliverBtn = canDeliver ? `
+          <div style="display:flex;gap:6px;align-items:center;margin-top:6px">
+            <input id="track-${o.id}" type="text" placeholder="Link MBE (opcional)"
+              style="padding:5px 8px;border-radius:6px;border:none;background:#333;color:#eee;font-size:11px;width:180px"/>
+            <button onclick="marcarEntregado(${o.id},'${orderNum}','${o.customers?.whatsapp_phone || ""}','${pass}')"
+              style="background:#22c55e;color:white;border:none;padding:5px 10px;border-radius:6px;font-size:11px;cursor:pointer;white-space:nowrap">
+              🛵 Marcar Entregado
+            </button>
+          </div>` : "";
+        return `
+          <tr id="row-${o.id}" style="border-bottom:1px solid #2a2a2a">
+            <td style="font-weight:bold">${orderNum}</td>
+            <td>${o.customers?.name || "-"}</td>
+            <td>${o.customers?.whatsapp_phone || "-"}</td>
+            <td>${o.delivery_address || "-"}</td>
+            <td>${flavors || "-"}</td>
+            <td>${o.pack_size}</td>
+            <td>RD$${(o.total_price || 0).toLocaleString()}</td>
+            <td>${o.delivery_zone || "-"}</td>
+            <td>${o.estimated_delivery || "-"}</td>
+            <td>
+              <span style="background:${statusColor(o.status)};color:white;padding:3px 10px;border-radius:20px;font-size:12px">${o.status}</span>
+              ${deliverBtn}
+            </td>
+            <td style="color:#999;font-size:12px">${timeOnly}</td>
+            <td>
+              <button onclick="deleteOrder(${o.id},'${orderNum}','${pass}')"
+                style="background:#ef4444;color:white;border:none;padding:4px 10px;border-radius:6px;font-size:11px;cursor:pointer">
+                🗑️
+              </button>
+            </td>
+          </tr>`;
+      }).join("");
+
       return `
-        <tr style="border-bottom:1px solid #333">
-          <td style="font-weight:bold">${orderNum}</td>
-          <td>${o.customers?.name || "-"}</td>
-          <td>${o.customers?.whatsapp_phone || "-"}</td>
-          <td>${o.delivery_address || "-"}</td>
-          <td>${flavors || "-"}</td>
-          <td>${o.pack_size}</td>
-          <td>RD$${(o.total_price || 0).toLocaleString()}</td>
-          <td>${o.delivery_zone || "-"}</td>
-          <td>${o.estimated_delivery || "-"}</td>
-          <td>
-            <span style="background:${statusColor(o.status)};color:white;padding:3px 10px;border-radius:20px;font-size:12px">${o.status}</span>
-            ${deliverBtn}
+        <tr>
+          <td colspan="12" style="background:#1e1e1e;padding:12px 16px;border-top:2px solid #333">
+            <span style="color:#f97316;font-weight:bold;font-size:14px;text-transform:capitalize">${day}</span>
+            <span style="color:#666;font-size:12px;margin-left:12px">${dayOrders.length} orden${dayOrders.length !== 1 ? "es" : ""}</span>
+            ${dayRevenue > 0 ? `<span style="color:#22c55e;font-size:12px;margin-left:12px">RD$${dayRevenue.toLocaleString()}</span>` : ""}
           </td>
-          <td style="color:#999;font-size:12px">${date}</td>
-        </tr>`;
+        </tr>
+        ${orderRows}`;
     }).join("");
 
     const paidOrders      = (orders || []).filter(o => o.status === "paid");
@@ -1573,6 +1600,26 @@ app.get("/admin", async (req, res) => {
           .refresh { background: #f97316; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-size: 14px; text-decoration: none; margin-bottom: 20px; display: inline-block; }
         </style>
         <script>
+          async function deleteOrder(orderId, orderNum, pass) {
+            if (!confirm('⚠️ ¿Eliminar la orden ' + orderNum + '? Esta acción no se puede deshacer.')) return;
+            try {
+              const res = await fetch('/admin/delete-order', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ order_id: orderId, pass })
+              });
+              const data = await res.json();
+              if (data.ok) {
+                const row = document.getElementById('row-' + orderId);
+                if (row) row.remove();
+              } else {
+                alert('Error: ' + (data.error || 'Unknown error'));
+              }
+            } catch(e) {
+              alert('Error de conexión');
+            }
+          }
+
           async function marcarEntregado(orderId, orderNum, phone, pass) {
             const trackingLink = document.getElementById('track-' + orderId)?.value?.trim() || '';
             if (!confirm('¿Marcar ' + orderNum + ' como entregado?')) return;
@@ -1614,7 +1661,7 @@ app.get("/admin", async (req, res) => {
           <thead><tr>
             <th>Orden</th><th>Cliente</th><th>Teléfono</th><th>Dirección</th>
             <th>Items</th><th>Pack</th><th>Total</th><th>Zona</th>
-            <th>Entrega</th><th>Estado / Acción</th><th>Fecha</th>
+            <th>Entrega</th><th>Estado / Acción</th><th>Hora</th><th></th>
           </tr></thead>
           <tbody>${rows}</tbody>
         </table>
@@ -1667,6 +1714,24 @@ app.post("/admin/deliver", async (req, res) => {
     res.json({ ok: true });
   } catch (err) {
     console.error("Deliver error:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ============================================================
+// ADMIN DELETE ORDER ENDPOINT
+// ============================================================
+app.post("/admin/delete-order", async (req, res) => {
+  const { order_id, pass } = req.body;
+  if (pass !== (process.env.ADMIN_PASSWORD || "chefpapi2024")) {
+    return res.status(403).json({ error: "No autorizado" });
+  }
+  try {
+    // order_items cascade-deletes via FK, so just delete the order
+    await supabase.from("orders").delete().eq("id", order_id);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("Delete order error:", err);
     res.status(500).json({ error: err.message });
   }
 });
