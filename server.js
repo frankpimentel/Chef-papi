@@ -260,9 +260,9 @@ app.post("/webhook", async (req, res) => {
         return;
       }
       await supabase.from("processed_messages").insert({ message_id: msgId });
-      // Clean up messages older than 1 hour to keep table small
-      const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
-      await supabase.from("processed_messages").delete().lt("created_at", oneHourAgo);
+      // Clean up messages older than 24 hours to prevent WhatsApp re-delivery duplicates
+      const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+      await supabase.from("processed_messages").delete().lt("created_at", oneDayAgo);
     }
 
     const phone = message.from;
