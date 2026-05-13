@@ -1552,6 +1552,15 @@ app.get("/admin", async (req, res) => {
       .lt("created_at", week.endISO)
       .order("created_at", { ascending: false });
 
+    // Hot traffic: cancelled orders from last 7 days (all weeks, not just this one)
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+    const { data: hotTrafficOrders } = await supabase
+      .from("orders")
+      .select("*, customers(*), order_items(*)")
+      .eq("status", "cancelled")
+      .gte("created_at", sevenDaysAgo)
+      .order("created_at", { ascending: false });
+
     const tab            = req.query.tab || "active";
     const activeOrders   = (allWeekOrders || []).filter(o => o.status !== "cancelled");
     const cancelledOrders= (allWeekOrders || []).filter(o => o.status === "cancelled");
@@ -1825,6 +1834,11 @@ app.get("/admin", async (req, res) => {
               ${tab==="cancelled" ? "background:#ef4444;color:white" : "background:#222;color:#aaa"}">
             ❌ Canceladas (${cancelledOrders.length})
           </a>
+          <a href="/admin?pass=${pass}&tab=hot"
+            style="padding:7px 18px;border-radius:20px;font-size:13px;text-decoration:none;font-weight:bold;
+              ${tab==="hot" ? "background:#f59e0b;color:white" : "background:#222;color:#f59e0b"}">
+            🔥 Hot Traffic (${(hotTrafficOrders||[]).length})
+          </a>
           <button id="bulk-delete-btn" onclick="bulkDelete('${pass}')"
             style="display:none;background:#ef4444;color:white;border:none;padding:7px 16px;border-radius:20px;font-size:13px;cursor:pointer;font-weight:bold">
             🗑️ Eliminar seleccionadas (0)
@@ -1837,6 +1851,35 @@ app.get("/admin", async (req, res) => {
           <div class="stat"><div class="stat-num">${entregadoOrders.length}</div><div class="stat-label">Entregadas</div></div>
           <div class="stat"><div class="stat-num">RD$${weekRevenue.toLocaleString()}</div><div class="stat-label">Revenue semana</div></div>
         </div>
+        ${tab === "hot" ? `
+        <p style="color:#f59e0b;font-size:13px;margin:0 0 16px">
+          Estos clientes completaron su orden pero no pagaron en los últimos 7 días. Son tu tráfico más caliente — escríbeles directo por WhatsApp.
+        </p>
+        ${(hotTrafficOrders||[]).length === 0 ? `<div class="empty">No hay hot traffic esta semana. 🎉</div>` : `
+        <table>
+          <thead><tr>
+            <th>Orden</th><th>Cliente</th><th>Teléfono</th><th>Items</th><th>Pack</th><th>Total</th><th>Cuándo abandonó</th><th>Contactar</th>
+          </tr></thead>
+          <tbody>
+            ${(hotTrafficOrders||[]).map(o => {
+              const flavors = (o.order_items||[]).map(i => `${FLAVORS[i.flavor]?.emoji||""} ${FLAVORS[i.flavor]?.title||i.flavor}`).join(", ");
+              const orderNum = `CP-${String(o.id).padStart(5,"0")}`;
+              const when = new Date(o.created_at).toLocaleString("es-DO", { timeZone:"America/Santo_Domingo", weekday:"short", month:"short", day:"numeric", hour:"2-digit", minute:"2-digit" });
+              const waLink = `https://wa.me/${o.customers?.whatsapp_phone}?text=${encodeURIComponent(`¡Hola ${o.customers?.name||""}! 👋 Vi que casi completaste tu orden ${orderNum} en Chef Papi. ¿Te puedo ayudar a finalizarla? 🍗`)}`;
+              return `
+              <tr style="border-bottom:1px solid #2a2a2a">
+                <td style="font-weight:bold;color:#f59e0b">${orderNum}</td>
+                <td>${o.customers?.name||"-"}</td>
+                <td>${o.customers?.whatsapp_phone||"-"}</td>
+                <td>${flavors||"-"}</td>
+                <td>${o.pack_size}</td>
+                <td>RD$${(o.total_price||0).toLocaleString()}</td>
+                <td style="color:#999;font-size:12px">${when}</td>
+                <td><a href="${waLink}" target="_blank" style="background:#25d366;color:white;padding:5px 10px;border-radius:6px;font-size:11px;text-decoration:none;white-space:nowrap">💬 WhatsApp</a></td>
+              </tr>`;
+            }).join("")}
+          </tbody>
+        </table>`}` : `
         ${(orders||[]).length === 0 ? `<div class="empty">No hay órdenes esta semana.</div>` : `
         <table>
           <thead><tr>
@@ -1846,7 +1889,7 @@ app.get("/admin", async (req, res) => {
             <th>Entrega</th><th>Estado / Acción</th><th>Hora</th><th></th>
           </tr></thead>
           <tbody>${rows}</tbody>
-        </table>`}
+        </table>`}`}
       </body></html>
     `);
   } catch (err) {
@@ -2202,6 +2245,34 @@ app.post("/admin/delete-order", async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+
+// ============================================================
+// AUTO-CANCEL ABANDONED ORDERS (runs every 30 min)
+// ============================================================
+const ABANDON_HOURS = 2; // mark as cancelled after 2h unpaid
+
+async function cancelAbandonedOrders() {
+  try {
+    const cutoff = new Date(Date.now() - ABANDON_HOURS * 60 * 60 * 1000).toISOString();
+    const { data: abandoned } = await supabase
+      .from("orders")
+      .select("id")
+      .eq("status", "pending")
+      .lt("created_at", cutoff);
+
+    if (!abandoned || abandoned.length === 0) return;
+
+    const ids = abandoned.map(o => o.id);
+    await supabase.from("orders").update({ status: "cancelled" }).in("id", ids);
+    console.log(`🚫 Auto-cancelled ${ids.length} abandoned order(s):`, ids);
+  } catch (err) {
+    console.error("Auto-cancel error:", err);
+  }
+}
+
+// Run once on startup, then every 30 minutes
+cancelAbandonedOrders();
+setInterval(cancelAbandonedOrders, 30 * 60 * 1000);
 
 // ============================================================
 // START
