@@ -161,7 +161,7 @@ function getDeliveryMessage(zone) {
 // 10 min — resets cleanly if user goes idle mid-flow
 const SESSION_TIMEOUT_MINUTES = 10;
 // States where timeout resets silently (no disconnect message)
-const SILENT_RESET_STATES = ["AWAITING_ZONE", "AWAITING_PACK", "DONE"];
+const SILENT_RESET_STATES = ["AWAITING_ZONE", "AWAITING_PACK", "DONE", "AWAITING_PAYMENT"];
 
 // ── CHEF PAPI KNOWLEDGE BASE ─────────────────────────────────
 const CHEF_PAPI_KNOWLEDGE = `
