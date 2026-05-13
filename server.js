@@ -1487,6 +1487,46 @@ async function sendCancelOrderButton(phone) {
 }
 
 // ============================================================
+// ADMIN HELPERS
+// ============================================================
+function getWeekRange(weekParam) {
+  const pad = n => String(n).padStart(2, "0");
+  const fmtDate = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+  const MONTHS = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
+
+  const sdNow = getSDTime();
+  const dow = sdNow.getDay(); // 0=Sun
+  const daysToMon = dow === 0 ? 6 : dow - 1;
+  const thisMon = new Date(sdNow);
+  thisMon.setDate(thisMon.getDate() - daysToMon);
+  thisMon.setHours(0, 0, 0, 0);
+
+  let monday;
+  if (weekParam) {
+    const [y, m, d] = weekParam.split("-").map(Number);
+    monday = new Date(thisMon);
+    monday.setFullYear(y, m - 1, d);
+    monday.setHours(0, 0, 0, 0);
+  } else {
+    monday = thisMon;
+  }
+
+  const sunday   = new Date(monday); sunday.setDate(sunday.getDate() + 6);
+  const nextMon  = new Date(monday); nextMon.setDate(nextMon.getDate() + 7);
+  const prevMon  = new Date(monday); prevMon.setDate(prevMon.getDate() - 7);
+
+  // SD is UTC-4; midnight SD = 04:00 UTC
+  const startISO = new Date(monday.getTime() + 4 * 3600000).toISOString();
+  const endISO   = new Date(nextMon.getTime() + 4 * 3600000).toISOString();
+  const label    = `${monday.getDate()} ${MONTHS[monday.getMonth()]} – ${sunday.getDate()} ${MONTHS[sunday.getMonth()]} ${sunday.getFullYear()}`;
+
+  return { startISO, endISO, label,
+    prevStr: fmtDate(prevMon),
+    nextStr: fmtDate(nextMon),
+    isCurrentWeek: fmtDate(monday) === fmtDate(thisMon) };
+}
+
+// ============================================================
 // ADMIN PAGE
 // ============================================================
 app.get("/admin", async (req, res) => {
@@ -1503,11 +1543,14 @@ app.get("/admin", async (req, res) => {
   }
 
   try {
+    const week = getWeekRange(req.query.week);
+
     const { data: orders } = await supabase
       .from("orders")
       .select("*, customers(*), order_items(*)")
-      .order("created_at", { ascending: false })
-      .limit(100);
+      .gte("created_at", week.startISO)
+      .lt("created_at", week.endISO)
+      .order("created_at", { ascending: false });
 
     const statusColor = s => {
       if (s === "entregado") return "#22c55e";
@@ -1579,7 +1622,9 @@ app.get("/admin", async (req, res) => {
 
     const paidOrders      = (orders || []).filter(o => o.status === "paid");
     const entregadoOrders = (orders || []).filter(o => o.status === "entregado");
-    const totalRevenue    = paidOrders.reduce((sum, o) => sum + (o.total_price || 0), 0);
+    const weekRevenue     = [...paidOrders, ...entregadoOrders].reduce((sum, o) => sum + (o.total_price || 0), 0);
+
+    const nextLink = week.isCurrentWeek ? "" : `<a class="nav-btn" href="/admin?pass=${pass}&week=${week.nextStr}">Siguiente →</a>`;
 
     res.send(`
       <html>
@@ -1588,7 +1633,11 @@ app.get("/admin", async (req, res) => {
         <meta charset="utf-8"/>
         <style>
           body { font-family: sans-serif; background: #111; color: #eee; margin: 0; padding: 20px; }
-          h1 { color: #f97316; }
+          h1 { color: #f97316; margin-bottom: 4px; }
+          .week-nav { display:flex; align-items:center; gap:12px; margin-bottom:20px; flex-wrap:wrap; }
+          .nav-btn { background:#333; color:#eee; border:none; padding:8px 16px; border-radius:8px; cursor:pointer; font-size:13px; text-decoration:none; }
+          .nav-btn:hover { background:#444; }
+          .week-label { color:#f97316; font-size:16px; font-weight:bold; }
           .stats { display: flex; gap: 20px; margin-bottom: 24px; flex-wrap: wrap; }
           .stat { background: #222; border-radius: 12px; padding: 20px 30px; min-width: 140px; }
           .stat-num { font-size: 32px; font-weight: bold; color: #f97316; }
@@ -1597,7 +1646,8 @@ app.get("/admin", async (req, res) => {
           th { background: #222; padding: 12px 10px; text-align: left; color: #f97316; font-size: 12px; text-transform: uppercase; }
           td { padding: 10px; vertical-align: top; }
           tr:hover { background: #222; }
-          .refresh { background: #f97316; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-size: 14px; text-decoration: none; margin-bottom: 20px; display: inline-block; }
+          .action-btn { background: #f97316; color: white; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-size: 13px; text-decoration: none; display:inline-block; }
+          .empty { text-align:center; color:#555; padding:60px 20px; font-size:16px; }
         </style>
         <script>
           async function deleteOrder(orderId, orderNum, pass) {
@@ -1618,17 +1668,14 @@ app.get("/admin", async (req, res) => {
               } else {
                 alert('Error: ' + (data.error || 'Unknown error'));
               }
-            } catch(e) {
-              alert('Error de conexión');
-            }
+            } catch(e) { alert('Error de conexión'); }
           }
 
           async function marcarEntregado(orderId, orderNum, phone, pass) {
             const trackingLink = document.getElementById('track-' + orderId)?.value?.trim() || '';
             if (!confirm('¿Marcar ' + orderNum + ' como entregado?')) return;
             const btn = event.target;
-            btn.disabled = true;
-            btn.textContent = 'Enviando...';
+            btn.disabled = true; btn.textContent = 'Enviando...';
             try {
               const res = await fetch('/admin/deliver', {
                 method: 'POST',
@@ -1637,29 +1684,35 @@ app.get("/admin", async (req, res) => {
               });
               const data = await res.json();
               if (data.ok) {
-                window.location.href = '/admin?pass=' + pass;
+                window.location.reload();
               } else {
                 alert('Error: ' + (data.error || 'Unknown error'));
-                btn.disabled = false;
-                btn.textContent = '🛵 Marcar Entregado';
+                btn.disabled = false; btn.textContent = '🛵 Marcar Entregado';
               }
             } catch(e) {
               alert('Error de conexión');
-              btn.disabled = false;
-              btn.textContent = '🛵 Marcar Entregado';
+              btn.disabled = false; btn.textContent = '🛵 Marcar Entregado';
             }
           }
         </script>
       </head>
       <body>
         <h1>🍗 Chef Papi — Órdenes</h1>
+        <div class="week-nav">
+          <a class="nav-btn" href="/admin?pass=${pass}&week=${week.prevStr}">← Semana anterior</a>
+          <span class="week-label">📅 ${week.label}</span>
+          ${nextLink}
+          <a class="nav-btn" href="/admin?pass=${pass}">Hoy</a>
+          <a class="action-btn" href="/admin/analytics?pass=${pass}">📊 Análisis mensual</a>
+          <a class="nav-btn" href="/admin?pass=${pass}&week=${req.query.week||''}">🔄 Actualizar</a>
+        </div>
         <div class="stats">
-          <div class="stat"><div class="stat-num">${(orders||[]).length}</div><div class="stat-label">Total órdenes</div></div>
+          <div class="stat"><div class="stat-num">${(orders||[]).length}</div><div class="stat-label">Órdenes esta semana</div></div>
           <div class="stat"><div class="stat-num">${paidOrders.length}</div><div class="stat-label">Pagadas</div></div>
           <div class="stat"><div class="stat-num">${entregadoOrders.length}</div><div class="stat-label">Entregadas</div></div>
-          <div class="stat"><div class="stat-num">RD$${totalRevenue.toLocaleString()}</div><div class="stat-label">Revenue total</div></div>
+          <div class="stat"><div class="stat-num">RD$${weekRevenue.toLocaleString()}</div><div class="stat-label">Revenue semana</div></div>
         </div>
-        <a class="refresh" href="/admin?pass=${pass}">🔄 Actualizar</a>
+        ${(orders||[]).length === 0 ? `<div class="empty">No hay órdenes esta semana.</div>` : `
         <table>
           <thead><tr>
             <th>Orden</th><th>Cliente</th><th>Teléfono</th><th>Dirección</th>
@@ -1667,12 +1720,178 @@ app.get("/admin", async (req, res) => {
             <th>Entrega</th><th>Estado / Acción</th><th>Hora</th><th></th>
           </tr></thead>
           <tbody>${rows}</tbody>
-        </table>
+        </table>`}
       </body></html>
     `);
   } catch (err) {
     console.error("Admin error:", err);
     res.send("<h2>Error cargando órdenes</h2>");
+  }
+});
+
+// ============================================================
+// ADMIN ANALYTICS PAGE
+// ============================================================
+app.get("/admin/analytics", async (req, res) => {
+  const pass = req.query.pass;
+  if (pass !== (process.env.ADMIN_PASSWORD || "chefpapi2024")) {
+    return res.redirect(`/admin`);
+  }
+
+  try {
+    // Last 12 months of paid/delivered orders
+    const since = new Date(); since.setMonth(since.getMonth() - 12);
+    const { data: orders } = await supabase
+      .from("orders")
+      .select("*, order_items(*), customers(name, whatsapp_phone)")
+      .in("status", ["paid", "entregado"])
+      .gte("created_at", since.toISOString())
+      .order("created_at", { ascending: true });
+
+    const allOrders = orders || [];
+
+    // Group by month
+    const byMonth = {};
+    for (const o of allOrders) {
+      const d = new Date(o.created_at);
+      const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;
+      if (!byMonth[key]) byMonth[key] = { orders: [], revenue: 0, packs: {3:0,5:0,8:0}, flavors: {} };
+      byMonth[key].orders.push(o);
+      byMonth[key].revenue += o.total_price || 0;
+      byMonth[key].packs[o.pack_size] = (byMonth[key].packs[o.pack_size] || 0) + 1;
+      for (const item of (o.order_items || [])) {
+        byMonth[key].flavors[item.flavor] = (byMonth[key].flavors[item.flavor] || 0) + 1;
+      }
+    }
+
+    // Flavor totals
+    const flavorTotals = {};
+    for (const o of allOrders) {
+      for (const item of (o.order_items || [])) {
+        flavorTotals[item.flavor] = (flavorTotals[item.flavor] || 0) + 1;
+      }
+    }
+
+    // Top customers
+    const customerMap = {};
+    for (const o of allOrders) {
+      const key = o.customers?.whatsapp_phone || "?";
+      if (!customerMap[key]) customerMap[key] = { name: o.customers?.name || "-", orders: 0, revenue: 0 };
+      customerMap[key].orders++;
+      customerMap[key].revenue += o.total_price || 0;
+    }
+    const topCustomers = Object.values(customerMap).sort((a,b) => b.revenue - a.revenue).slice(0,10);
+
+    const MONTH_NAMES = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
+    const maxRevenue = Math.max(...Object.values(byMonth).map(m => m.revenue), 1);
+
+    const monthRows = Object.entries(byMonth).reverse().map(([key, m]) => {
+      const [y, mo] = key.split("-");
+      const monthName = `${MONTH_NAMES[parseInt(mo)-1]} ${y}`;
+      const topFlavor = Object.entries(m.flavors).sort((a,b) => b[1]-a[1])[0];
+      const barW = Math.round((m.revenue / maxRevenue) * 200);
+      return `
+        <tr style="border-bottom:1px solid #2a2a2a">
+          <td style="font-weight:bold;white-space:nowrap">${monthName}</td>
+          <td style="text-align:center">${m.orders.length}</td>
+          <td>
+            <div style="display:flex;align-items:center;gap:8px">
+              <div style="background:#f97316;height:14px;border-radius:4px;width:${barW}px;min-width:4px"></div>
+              <span>RD$${m.revenue.toLocaleString()}</span>
+            </div>
+          </td>
+          <td style="text-align:center">RD$${m.orders.length ? Math.round(m.revenue / m.orders.length).toLocaleString() : "-"}</td>
+          <td style="text-align:center">${m.packs[3]||0} / ${m.packs[5]||0} / ${m.packs[8]||0}</td>
+          <td>${topFlavor ? `${FLAVORS[topFlavor[0]]?.emoji} ${FLAVORS[topFlavor[0]]?.title} (${topFlavor[1]})` : "-"}</td>
+        </tr>`;
+    }).join("");
+
+    const totalRevenue = allOrders.reduce((s,o) => s + (o.total_price||0), 0);
+    const avgOrder     = allOrders.length ? Math.round(totalRevenue / allOrders.length) : 0;
+
+    const flavorBars = Object.entries(flavorTotals).sort((a,b)=>b[1]-a[1]).map(([id, count]) => {
+      const f = FLAVORS[id];
+      const pct = Math.round((count / Math.max(...Object.values(flavorTotals))) * 100);
+      return `
+        <div style="margin-bottom:12px">
+          <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+            <span>${f?.emoji} ${f?.title}</span><span style="color:#999">${count} unidades</span>
+          </div>
+          <div style="background:#333;border-radius:6px;height:12px">
+            <div style="background:#f97316;height:12px;border-radius:6px;width:${pct}%"></div>
+          </div>
+        </div>`;
+    }).join("");
+
+    const customerRows = topCustomers.map((c,i) => `
+      <tr style="border-bottom:1px solid #2a2a2a">
+        <td style="color:#f97316;font-weight:bold">#${i+1}</td>
+        <td>${c.name}</td>
+        <td style="text-align:center">${c.orders}</td>
+        <td>RD$${c.revenue.toLocaleString()}</td>
+      </tr>`).join("");
+
+    res.send(`
+      <html>
+      <head>
+        <title>Chef Papi — Analytics</title>
+        <meta charset="utf-8"/>
+        <style>
+          body { font-family:sans-serif; background:#111; color:#eee; margin:0; padding:20px; }
+          h1 { color:#f97316; margin-bottom:4px; }
+          h2 { color:#f97316; font-size:16px; margin:32px 0 12px; }
+          .stats { display:flex; gap:20px; margin-bottom:24px; flex-wrap:wrap; }
+          .stat { background:#222; border-radius:12px; padding:20px 30px; min-width:140px; }
+          .stat-num { font-size:32px; font-weight:bold; color:#f97316; }
+          .stat-label { color:#999; font-size:14px; margin-top:4px; }
+          table { width:100%; border-collapse:collapse; background:#1a1a1a; border-radius:12px; overflow:hidden; font-size:13px; margin-bottom:32px; }
+          th { background:#222; padding:12px 10px; text-align:left; color:#f97316; font-size:12px; text-transform:uppercase; }
+          td { padding:10px; vertical-align:middle; }
+          tr:hover { background:#222; }
+          .back { background:#333; color:#eee; padding:8px 16px; border-radius:8px; text-decoration:none; font-size:13px; display:inline-block; margin-bottom:20px; }
+          .grid { display:grid; grid-template-columns:1fr 1fr; gap:24px; }
+          .card { background:#1a1a1a; border-radius:12px; padding:20px; }
+          @media(max-width:700px) { .grid { grid-template-columns:1fr; } }
+        </style>
+      </head>
+      <body>
+        <h1>📊 Análisis de Ventas</h1>
+        <a class="back" href="/admin?pass=${pass}">← Volver a órdenes</a>
+        <p style="color:#666;font-size:13px;margin-top:-8px;margin-bottom:20px">Últimos 12 meses · solo órdenes pagadas/entregadas</p>
+
+        <div class="stats">
+          <div class="stat"><div class="stat-num">${allOrders.length}</div><div class="stat-label">Órdenes totales</div></div>
+          <div class="stat"><div class="stat-num">RD$${totalRevenue.toLocaleString()}</div><div class="stat-label">Revenue total</div></div>
+          <div class="stat"><div class="stat-num">RD$${avgOrder.toLocaleString()}</div><div class="stat-label">Ticket promedio</div></div>
+          <div class="stat"><div class="stat-num">${Object.keys(customerMap).length}</div><div class="stat-label">Clientes únicos</div></div>
+        </div>
+
+        <h2>📅 Resumen por mes</h2>
+        <table>
+          <thead><tr>
+            <th>Mes</th><th>Órdenes</th><th>Revenue</th><th>Ticket prom.</th><th>Pack 3/5/8</th><th>Sabor top</th>
+          </tr></thead>
+          <tbody>${monthRows}</tbody>
+        </table>
+
+        <div class="grid">
+          <div class="card">
+            <h2 style="margin-top:0">🍗 Sabores más pedidos</h2>
+            ${flavorBars}
+          </div>
+          <div class="card">
+            <h2 style="margin-top:0">⭐ Top clientes</h2>
+            <table style="margin-bottom:0">
+              <thead><tr><th>#</th><th>Cliente</th><th>Órdenes</th><th>Revenue</th></tr></thead>
+              <tbody>${customerRows}</tbody>
+            </table>
+          </div>
+        </div>
+      </body></html>
+    `);
+  } catch (err) {
+    console.error("Analytics error:", err);
+    res.send("<h2>Error cargando analytics</h2>");
   }
 });
 
