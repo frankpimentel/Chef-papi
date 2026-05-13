@@ -265,6 +265,13 @@ app.post("/webhook", async (req, res) => {
       await supabase.from("processed_messages").delete().lt("created_at", oneDayAgo);
     }
 
+    // Ignore messages older than 5 minutes — blocks WhatsApp stale re-deliveries
+    const msgTimestamp = parseInt(message.timestamp || "0", 10);
+    if (msgTimestamp && (Date.now() / 1000) - msgTimestamp > 300) {
+      console.log(`Stale message skipped (${Math.round((Date.now() / 1000) - msgTimestamp)}s old):`, msgId);
+      return;
+    }
+
     const phone = message.from;
     const type  = message.type;
 
