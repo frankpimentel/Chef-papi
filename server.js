@@ -1502,13 +1502,31 @@ app.get("/admin", async (req, res) => {
       .order("created_at", { ascending: false })
       .limit(100);
 
+    const statusColor = s => {
+      if (s === "entregado") return "#22c55e";
+      if (s === "paid")      return "#f97316";
+      if (s === "pending")   return "#eab308";
+      if (s === "cancelled") return "#ef4444";
+      return "#6b7280";
+    };
+
     const rows = (orders || []).map(o => {
       const flavors = (o.order_items || []).map(i => `${FLAVORS[i.flavor]?.emoji || ""} ${FLAVORS[i.flavor]?.title || i.flavor}`).join(", ");
-      const date = new Date(o.created_at).toLocaleString("es-DO", { timeZone: "America/Santo_Domingo" });
-      const statusColor = o.status === "paid" ? "#22c55e" : o.status === "cancelled" ? "#ef4444" : "#f97316";
+      const date    = new Date(o.created_at).toLocaleString("es-DO", { timeZone: "America/Santo_Domingo" });
+      const orderNum = `CP-${String(o.id).padStart(5,"0")}`;
+      const canDeliver = ["paid", "sent"].includes(o.status);
+      const deliverBtn = canDeliver ? `
+        <div style="display:flex;gap:6px;align-items:center;margin-top:6px">
+          <input id="track-${o.id}" type="text" placeholder="Link MBE (opcional)"
+            style="padding:5px 8px;border-radius:6px;border:none;background:#333;color:#eee;font-size:11px;width:180px"/>
+          <button onclick="marcarEntregado(${o.id},'${orderNum}','${o.customers?.whatsapp_phone || ""}','${pass}')"
+            style="background:#22c55e;color:white;border:none;padding:5px 10px;border-radius:6px;font-size:11px;cursor:pointer;white-space:nowrap">
+            🛵 Marcar Entregado
+          </button>
+        </div>` : "";
       return `
         <tr style="border-bottom:1px solid #333">
-          <td>CP-${String(o.id).padStart(5,"0")}</td>
+          <td style="font-weight:bold">${orderNum}</td>
           <td>${o.customers?.name || "-"}</td>
           <td>${o.customers?.whatsapp_phone || "-"}</td>
           <td>${o.delivery_address || "-"}</td>
@@ -1517,13 +1535,17 @@ app.get("/admin", async (req, res) => {
           <td>RD$${(o.total_price || 0).toLocaleString()}</td>
           <td>${o.delivery_zone || "-"}</td>
           <td>${o.estimated_delivery || "-"}</td>
-          <td><span style="background:${statusColor};color:white;padding:3px 10px;border-radius:20px;font-size:12px">${o.status}</span></td>
+          <td>
+            <span style="background:${statusColor(o.status)};color:white;padding:3px 10px;border-radius:20px;font-size:12px">${o.status}</span>
+            ${deliverBtn}
+          </td>
           <td style="color:#999;font-size:12px">${date}</td>
         </tr>`;
     }).join("");
 
-    const paidOrders = (orders || []).filter(o => o.status === "paid");
-    const totalRevenue = paidOrders.reduce((sum, o) => sum + (o.total_price || 0), 0);
+    const paidOrders      = (orders || []).filter(o => o.status === "paid");
+    const entregadoOrders = (orders || []).filter(o => o.status === "entregado");
+    const totalRevenue    = paidOrders.reduce((sum, o) => sum + (o.total_price || 0), 0);
 
     res.send(`
       <html>
@@ -1543,12 +1565,41 @@ app.get("/admin", async (req, res) => {
           tr:hover { background: #222; }
           .refresh { background: #f97316; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-size: 14px; text-decoration: none; margin-bottom: 20px; display: inline-block; }
         </style>
+        <script>
+          async function marcarEntregado(orderId, orderNum, phone, pass) {
+            const trackingLink = document.getElementById('track-' + orderId)?.value?.trim() || '';
+            if (!confirm('¿Marcar ' + orderNum + ' como entregado?')) return;
+            const btn = event.target;
+            btn.disabled = true;
+            btn.textContent = 'Enviando...';
+            try {
+              const res = await fetch('/admin/deliver', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ order_id: orderId, order_num: orderNum, phone, pass, tracking_link: trackingLink })
+              });
+              const data = await res.json();
+              if (data.ok) {
+                window.location.href = '/admin?pass=' + pass;
+              } else {
+                alert('Error: ' + (data.error || 'Unknown error'));
+                btn.disabled = false;
+                btn.textContent = '🛵 Marcar Entregado';
+              }
+            } catch(e) {
+              alert('Error de conexión');
+              btn.disabled = false;
+              btn.textContent = '🛵 Marcar Entregado';
+            }
+          }
+        </script>
       </head>
       <body>
         <h1>🍗 Chef Papi — Órdenes</h1>
         <div class="stats">
           <div class="stat"><div class="stat-num">${(orders||[]).length}</div><div class="stat-label">Total órdenes</div></div>
           <div class="stat"><div class="stat-num">${paidOrders.length}</div><div class="stat-label">Pagadas</div></div>
+          <div class="stat"><div class="stat-num">${entregadoOrders.length}</div><div class="stat-label">Entregadas</div></div>
           <div class="stat"><div class="stat-num">RD$${totalRevenue.toLocaleString()}</div><div class="stat-label">Revenue total</div></div>
         </div>
         <a class="refresh" href="/admin?pass=${pass}">🔄 Actualizar</a>
@@ -1556,7 +1607,7 @@ app.get("/admin", async (req, res) => {
           <thead><tr>
             <th>Orden</th><th>Cliente</th><th>Teléfono</th><th>Dirección</th>
             <th>Items</th><th>Pack</th><th>Total</th><th>Zona</th>
-            <th>Entrega</th><th>Estado</th><th>Fecha</th>
+            <th>Entrega</th><th>Estado / Acción</th><th>Fecha</th>
           </tr></thead>
           <tbody>${rows}</tbody>
         </table>
@@ -1565,6 +1616,51 @@ app.get("/admin", async (req, res) => {
   } catch (err) {
     console.error("Admin error:", err);
     res.send("<h2>Error cargando órdenes</h2>");
+  }
+});
+
+// ============================================================
+// ADMIN DELIVER ENDPOINT
+// ============================================================
+app.post("/admin/deliver", async (req, res) => {
+  const { order_id, order_num, phone, pass, tracking_link } = req.body;
+  if (pass !== (process.env.ADMIN_PASSWORD || "chefpapi2024")) {
+    return res.status(403).json({ error: "No autorizado" });
+  }
+  try {
+    // 1. Update order status
+    await supabase.from("orders").update({ status: "entregado" }).eq("id", order_id);
+
+    // 2. Send WhatsApp message
+    let waMsg = `🛵 Tu orden ${order_num} está en camino! Tu pollo llegará pronto. Buen provecho Chef Papi 🍗👨‍🍳`;
+    if (tracking_link) waMsg += `\n\nRastrea tu entrega aquí: ${tracking_link}`;
+    await sendMessage(phone, waMsg);
+
+    // 3. Notify Google Sheets via Zapier
+    const SHEETS_WEBHOOK = process.env.SHEETS_WEBHOOK_URL;
+    if (SHEETS_WEBHOOK) {
+      const now = getSDTime();
+      const pad = n => String(n).padStart(2, "0");
+      const hours24 = now.getHours();
+      const hours12 = hours24 % 12 || 12;
+      const ampm = hours24 < 12 ? "AM" : "PM";
+      const timeStr = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())} ${hours12}:${pad(now.getMinutes())}:${pad(now.getSeconds())} ${ampm} (Santo Domingo)`;
+      await fetch(SHEETS_WEBHOOK, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          order_number: order_num,
+          status:       "ENTREGADO",
+          timestamp:    timeStr,
+          tracking_link: tracking_link || "",
+        }),
+      });
+    }
+
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("Deliver error:", err);
+    res.status(500).json({ error: err.message });
   }
 });
 
