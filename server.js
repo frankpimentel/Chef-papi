@@ -1559,6 +1559,7 @@ app.get("/admin", async (req, res) => {
 
     const statusColor = s => {
       if (s === "entregado") return "#22c55e";
+      if (s === "en_curso")  return "#3b82f6";
       if (s === "paid")      return "#f97316";
       if (s === "pending")   return "#eab308";
       if (s === "cancelled") return "#ef4444";
@@ -1579,14 +1580,19 @@ app.get("/admin", async (req, res) => {
         const flavors  = (o.order_items || []).map(i => `${FLAVORS[i.flavor]?.emoji || ""} ${FLAVORS[i.flavor]?.title || i.flavor}`).join(", ");
         const timeOnly = new Date(o.created_at).toLocaleTimeString("es-DO", { timeZone: "America/Santo_Domingo", hour: "2-digit", minute: "2-digit" });
         const orderNum = `CP-${String(o.id).padStart(5,"0")}`;
-        const canDeliver = ["paid", "sent"].includes(o.status);
-        const deliverBtn = canDeliver ? `
+        const actionBtn = ["paid","sent"].includes(o.status) ? `
           <div style="display:flex;gap:6px;align-items:center;margin-top:6px">
-            <input id="track-${o.id}" type="text" placeholder="Link MBE (opcional)"
-              style="padding:5px 8px;border-radius:6px;border:none;background:#333;color:#eee;font-size:11px;width:180px"/>
+            <input id="track-${o.id}" type="text" placeholder="Link rastreo (opcional)"
+              style="padding:5px 8px;border-radius:6px;border:none;background:#333;color:#eee;font-size:11px;width:170px"/>
+            <button onclick="enviarLink(${o.id},'${orderNum}','${o.customers?.whatsapp_phone || ""}','${pass}')"
+              style="background:#3b82f6;color:white;border:none;padding:5px 10px;border-radius:6px;font-size:11px;cursor:pointer;white-space:nowrap">
+              📍 Enviar Link
+            </button>
+          </div>` : o.status === "en_curso" ? `
+          <div style="margin-top:6px">
             <button onclick="marcarEntregado(${o.id},'${orderNum}','${o.customers?.whatsapp_phone || ""}','${pass}')"
-              style="background:#22c55e;color:white;border:none;padding:5px 10px;border-radius:6px;font-size:11px;cursor:pointer;white-space:nowrap">
-              🛵 Marcar Entregado
+              style="background:#22c55e;color:white;border:none;padding:5px 14px;border-radius:6px;font-size:11px;cursor:pointer;white-space:nowrap">
+              ✅ Marcar Entregado
             </button>
           </div>` : "";
         return `
@@ -1603,7 +1609,7 @@ app.get("/admin", async (req, res) => {
             <td>${o.estimated_delivery || "-"}</td>
             <td>
               <span style="background:${statusColor(o.status)};color:white;padding:3px 10px;border-radius:20px;font-size:12px">${o.status}</span>
-              ${deliverBtn}
+              ${actionBtn}
             </td>
             <td style="color:#999;font-size:12px">${timeOnly}</td>
             <td>
@@ -1715,13 +1721,13 @@ app.get("/admin", async (req, res) => {
             } catch(e) { alert('Error de conexión'); }
           }
 
-          async function marcarEntregado(orderId, orderNum, phone, pass) {
+          async function enviarLink(orderId, orderNum, phone, pass) {
             const trackingLink = document.getElementById('track-' + orderId)?.value?.trim() || '';
-            if (!confirm('¿Marcar ' + orderNum + ' como entregado?')) return;
+            if (!confirm('¿Enviar link y marcar ' + orderNum + ' como En Curso?')) return;
             const btn = event.target;
             btn.disabled = true; btn.textContent = 'Enviando...';
             try {
-              const res = await fetch('/admin/deliver', {
+              const res = await fetch('/admin/send-link', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ order_id: orderId, order_num: orderNum, phone, pass, tracking_link: trackingLink })
@@ -1731,11 +1737,34 @@ app.get("/admin", async (req, res) => {
                 window.location.reload();
               } else {
                 alert('Error: ' + (data.error || 'Unknown error'));
-                btn.disabled = false; btn.textContent = '🛵 Marcar Entregado';
+                btn.disabled = false; btn.textContent = '📍 Enviar Link';
               }
             } catch(e) {
               alert('Error de conexión');
-              btn.disabled = false; btn.textContent = '🛵 Marcar Entregado';
+              btn.disabled = false; btn.textContent = '📍 Enviar Link';
+            }
+          }
+
+          async function marcarEntregado(orderId, orderNum, phone, pass) {
+            if (!confirm('¿Marcar ' + orderNum + ' como entregado?')) return;
+            const btn = event.target;
+            btn.disabled = true; btn.textContent = 'Enviando...';
+            try {
+              const res = await fetch('/admin/deliver', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ order_id: orderId, order_num: orderNum, phone, pass })
+              });
+              const data = await res.json();
+              if (data.ok) {
+                window.location.reload();
+              } else {
+                alert('Error: ' + (data.error || 'Unknown error'));
+                btn.disabled = false; btn.textContent = '✅ Marcar Entregado';
+              }
+            } catch(e) {
+              alert('Error de conexión');
+              btn.disabled = false; btn.textContent = '✅ Marcar Entregado';
             }
           }
         </script>
@@ -1800,29 +1829,35 @@ app.get("/admin/analytics", async (req, res) => {
   }
 
   try {
-    // Last 12 months of paid/delivered orders
+    // Last 12 months of all orders
     const since = new Date(); since.setMonth(since.getMonth() - 12);
     const { data: orders } = await supabase
       .from("orders")
       .select("*, order_items(*), customers(name, whatsapp_phone)")
-      .in("status", ["paid", "entregado"])
       .gte("created_at", since.toISOString())
       .order("created_at", { ascending: true });
 
-    const allOrders = orders || [];
+    const allOrders      = (orders || []).filter(o => ["paid","entregado","en_curso"].includes(o.status));
+    const cancelledOrders = (orders || []).filter(o => o.status === "cancelled");
 
     // Group by month
     const byMonth = {};
     for (const o of allOrders) {
       const d = new Date(o.created_at);
       const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;
-      if (!byMonth[key]) byMonth[key] = { orders: [], revenue: 0, packs: {3:0,5:0,8:0}, flavors: {} };
+      if (!byMonth[key]) byMonth[key] = { orders: [], revenue: 0, packs: {3:0,5:0,8:0}, flavors: {}, cancelled: 0 };
       byMonth[key].orders.push(o);
       byMonth[key].revenue += o.total_price || 0;
       byMonth[key].packs[o.pack_size] = (byMonth[key].packs[o.pack_size] || 0) + 1;
       for (const item of (o.order_items || [])) {
         byMonth[key].flavors[item.flavor] = (byMonth[key].flavors[item.flavor] || 0) + 1;
       }
+    }
+    for (const o of cancelledOrders) {
+      const d = new Date(o.created_at);
+      const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;
+      if (!byMonth[key]) byMonth[key] = { orders: [], revenue: 0, packs: {3:0,5:0,8:0}, flavors: {}, cancelled: 0 };
+      byMonth[key].cancelled = (byMonth[key].cancelled || 0) + 1;
     }
 
     // Flavor totals
@@ -1863,6 +1898,7 @@ app.get("/admin/analytics", async (req, res) => {
           </td>
           <td style="text-align:center">RD$${m.orders.length ? Math.round(m.revenue / m.orders.length).toLocaleString() : "-"}</td>
           <td style="text-align:center">${m.packs[3]||0} / ${m.packs[5]||0} / ${m.packs[8]||0}</td>
+          <td style="text-align:center;color:${m.cancelled > 0 ? "#ef4444" : "#555"}">${m.cancelled || 0}</td>
           <td>${topFlavor ? `${FLAVORS[topFlavor[0]]?.emoji} ${FLAVORS[topFlavor[0]]?.title} (${topFlavor[1]})` : "-"}</td>
         </tr>`;
     }).join("");
@@ -1925,12 +1961,13 @@ app.get("/admin/analytics", async (req, res) => {
           <div class="stat"><div class="stat-num">RD$${totalRevenue.toLocaleString()}</div><div class="stat-label">Revenue total</div></div>
           <div class="stat"><div class="stat-num">RD$${avgOrder.toLocaleString()}</div><div class="stat-label">Ticket promedio</div></div>
           <div class="stat"><div class="stat-num">${Object.keys(customerMap).length}</div><div class="stat-label">Clientes únicos</div></div>
+          <div class="stat"><div class="stat-num" style="color:#ef4444">${cancelledOrders.length}</div><div class="stat-label">Canceladas (12m)</div></div>
         </div>
 
         <h2>📅 Resumen por mes</h2>
         <table>
           <thead><tr>
-            <th>Mes</th><th>Órdenes</th><th>Revenue</th><th>Ticket prom.</th><th>Pack 3/5/8</th><th>Sabor top</th>
+            <th>Mes</th><th>Órdenes</th><th>Revenue</th><th>Ticket prom.</th><th>Pack 3/5/8</th><th>Canceladas</th><th>Sabor top</th>
           </tr></thead>
           <tbody>${monthRows}</tbody>
         </table>
@@ -1957,40 +1994,65 @@ app.get("/admin/analytics", async (req, res) => {
 });
 
 // ============================================================
-// ADMIN DELIVER ENDPOINT
+// ADMIN SEND LINK (EN CURSO) ENDPOINT
 // ============================================================
-app.post("/admin/deliver", async (req, res) => {
+app.post("/admin/send-link", async (req, res) => {
   const { order_id, order_num, phone, pass, tracking_link } = req.body;
   if (pass !== (process.env.ADMIN_PASSWORD || "chefpapi2024")) {
     return res.status(403).json({ error: "No autorizado" });
   }
   try {
-    // 1. Update order status
-    await supabase.from("orders").update({ status: "entregado" }).eq("id", order_id);
+    await supabase.from("orders").update({ status: "en_curso" }).eq("id", order_id);
 
-    // 2. Send WhatsApp message
-    let waMsg = `🛵 Tu orden ${order_num} está en camino! Tu pollo llegará pronto. Buen provecho Chef Papi 🍗👨‍🍳`;
-    if (tracking_link) waMsg += `\n\nRastrea tu entrega aquí: ${tracking_link}`;
+    let waMsg = `🛵 ¡Tu orden ${order_num} está en camino! El motorista está en ruta hacia ti. 🍗`;
+    if (tracking_link) waMsg += `\n\n📍 Rastrea tu entrega aquí:\n${tracking_link}`;
     await sendMessage(phone, waMsg);
 
-    // 3. Notify Google Sheets via Zapier
     const SHEETS_WEBHOOK = process.env.SHEETS_WEBHOOK_URL;
     if (SHEETS_WEBHOOK) {
       const now = getSDTime();
       const pad = n => String(n).padStart(2, "0");
-      const hours24 = now.getHours();
-      const hours12 = hours24 % 12 || 12;
-      const ampm = hours24 < 12 ? "AM" : "PM";
-      const timeStr = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())} ${hours12}:${pad(now.getMinutes())}:${pad(now.getSeconds())} ${ampm} (Santo Domingo)`;
+      const h24 = now.getHours(), h12 = h24 % 12 || 12, ampm = h24 < 12 ? "AM" : "PM";
+      const timeStr = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())} ${h12}:${pad(now.getMinutes())}:${pad(now.getSeconds())} ${ampm} (Santo Domingo)`;
       await fetch(SHEETS_WEBHOOK, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          order_number: order_num,
-          status:       "ENTREGADO",
-          timestamp:    timeStr,
-          tracking_link: tracking_link || "",
-        }),
+        body: JSON.stringify({ order_number: order_num, status: "EN CURSO", timestamp: timeStr, tracking_link: tracking_link || "" }),
+      });
+    }
+
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("Send link error:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ============================================================
+// ADMIN DELIVER ENDPOINT
+// ============================================================
+app.post("/admin/deliver", async (req, res) => {
+  const { order_id, order_num, phone, pass } = req.body;
+  if (pass !== (process.env.ADMIN_PASSWORD || "chefpapi2024")) {
+    return res.status(403).json({ error: "No autorizado" });
+  }
+  try {
+    await supabase.from("orders").update({ status: "entregado" }).eq("id", order_id);
+
+    await sendMessage(phone,
+      `✅ ¡Tu orden ${order_num} fue entregada! Esperamos que la disfrutes. Buen provecho 🍗👨‍🍳`
+    );
+
+    const SHEETS_WEBHOOK = process.env.SHEETS_WEBHOOK_URL;
+    if (SHEETS_WEBHOOK) {
+      const now = getSDTime();
+      const pad = n => String(n).padStart(2, "0");
+      const h24 = now.getHours(), h12 = h24 % 12 || 12, ampm = h24 < 12 ? "AM" : "PM";
+      const timeStr = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())} ${h12}:${pad(now.getMinutes())}:${pad(now.getSeconds())} ${ampm} (Santo Domingo)`;
+      await fetch(SHEETS_WEBHOOK, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ order_number: order_num, status: "ENTREGADO", timestamp: timeStr }),
       });
     }
 
