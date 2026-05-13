@@ -1660,6 +1660,16 @@ app.get("/admin", async (req, res) => {
           tr:hover { background: #222; }
           .action-btn { background: #f97316; color: white; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-size: 13px; text-decoration: none; display:inline-block; }
           .empty { text-align:center; color:#555; padding:60px 20px; font-size:16px; }
+          @media print {
+            body { background: white; color: black; padding: 10px; }
+            .week-nav, .stats, .no-print { display: none !important; }
+            table { font-size: 11px; }
+            th { background: #eee !important; color: black !important; }
+            td { padding: 6px !important; }
+            h1 { color: black !important; font-size: 18px; }
+            .print-header { display: block !important; }
+          }
+          .print-header { display: none; }
         </style>
         <script>
           async function testWebhook(pass) {
@@ -1796,10 +1806,15 @@ app.get("/admin", async (req, res) => {
           ${nextLink}
           <a class="nav-btn" href="/admin?pass=${pass}">Hoy</a>
           <a class="action-btn" href="/admin/analytics?pass=${pass}">📊 Análisis mensual</a>
-          <button onclick="testWebhook('${pass}')" style="background:#6b7280;color:white;border:none;padding:8px 16px;border-radius:8px;cursor:pointer;font-size:13px">🧪 Test Webhook</button>
+          <a href="/admin/export-csv?pass=${pass}&week=${req.query.week||''}" class="nav-btn no-print" style="background:#22c55e;color:white">📥 Exportar CSV</a>
+          <button onclick="window.print()" class="nav-btn no-print">🖨️ Imprimir</button>
+          <button onclick="testWebhook('${pass}')" class="nav-btn no-print" style="background:#6b7280;color:white;border:none;cursor:pointer">🧪 Test Webhook</button>
           <a class="nav-btn" href="/admin?pass=${pass}&week=${req.query.week||''}&tab=${tab}">🔄 Actualizar</a>
         </div>
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap">
+        <div class="print-header" style="margin-bottom:16px">
+          <strong>Chef Papi — Órdenes</strong> &nbsp;|&nbsp; Semana: ${week.label} &nbsp;|&nbsp; ${tab === "cancelled" ? "Canceladas" : "Activas"}
+        </div>
+        <div class="no-print" style="display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap">
           <a href="/admin?pass=${pass}&week=${req.query.week||''}&tab=active"
             style="padding:7px 18px;border-radius:20px;font-size:13px;text-decoration:none;font-weight:bold;
               ${tab==="active" ? "background:#f97316;color:white" : "background:#222;color:#aaa"}">
@@ -1814,6 +1829,7 @@ app.get("/admin", async (req, res) => {
             style="display:none;background:#ef4444;color:white;border:none;padding:7px 16px;border-radius:20px;font-size:13px;cursor:pointer;font-weight:bold">
             🗑️ Eliminar seleccionadas (0)
           </button>
+        </div>
         </div>
         <div class="stats">
           <div class="stat"><div class="stat-num">${(orders||[]).length}</div><div class="stat-label">Órdenes esta semana</div></div>
@@ -2028,19 +2044,6 @@ app.post("/admin/send-link", async (req, res) => {
     if (tracking_link) waMsg += `\n\n📍 Rastrea tu entrega aquí:\n${tracking_link}`;
     await sendMessage(phone, waMsg);
 
-    const SHEETS_WEBHOOK = process.env.SHEETS_WEBHOOK_URL;
-    if (SHEETS_WEBHOOK) {
-      const now = getSDTime();
-      const pad = n => String(n).padStart(2, "0");
-      const h24 = now.getHours(), h12 = h24 % 12 || 12, ampm = h24 < 12 ? "AM" : "PM";
-      const timeStr = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())} ${h12}:${pad(now.getMinutes())}:${pad(now.getSeconds())} ${ampm} (Santo Domingo)`;
-      await fetch(SHEETS_WEBHOOK, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ order_number: order_num, status: "EN CURSO", timestamp: timeStr, tracking_link: tracking_link || "" }),
-      });
-    }
-
     res.json({ ok: true });
   } catch (err) {
     console.error("Send link error:", err);
@@ -2063,23 +2066,60 @@ app.post("/admin/deliver", async (req, res) => {
       `✅ ¡Tu orden ${order_num} fue entregada! Esperamos que la disfrutes. Buen provecho 🍗👨‍🍳`
     );
 
-    const SHEETS_WEBHOOK = process.env.SHEETS_WEBHOOK_URL;
-    if (SHEETS_WEBHOOK) {
-      const now = getSDTime();
-      const pad = n => String(n).padStart(2, "0");
-      const h24 = now.getHours(), h12 = h24 % 12 || 12, ampm = h24 < 12 ? "AM" : "PM";
-      const timeStr = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())} ${h12}:${pad(now.getMinutes())}:${pad(now.getSeconds())} ${ampm} (Santo Domingo)`;
-      await fetch(SHEETS_WEBHOOK, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ order_number: order_num, status: "ENTREGADO", timestamp: timeStr }),
-      });
-    }
-
     res.json({ ok: true });
   } catch (err) {
     console.error("Deliver error:", err);
     res.status(500).json({ error: err.message });
+  }
+});
+
+// ============================================================
+// ADMIN CSV EXPORT ENDPOINT
+// ============================================================
+app.get("/admin/export-csv", async (req, res) => {
+  const { pass } = req.query;
+  if (pass !== (process.env.ADMIN_PASSWORD || "chefpapi2024")) {
+    return res.status(403).send("No autorizado");
+  }
+  try {
+    const week = getWeekRange(req.query.week);
+    const { data: orders } = await supabase
+      .from("orders")
+      .select("*, customers(*), order_items(*)")
+      .gte("created_at", week.startISO)
+      .lt("created_at", week.endISO)
+      .neq("status", "cancelled")
+      .order("created_at", { ascending: true });
+
+    const rows = (orders || []).map(o => {
+      const flavors = (o.order_items || []).map(i => FLAVORS[i.flavor]?.title || i.flavor).join(" / ");
+      const date    = new Date(o.created_at).toLocaleString("es-DO", { timeZone: "America/Santo_Domingo" });
+      const orderNum = `CP-${String(o.id).padStart(5,"0")}`;
+      return [
+        orderNum,
+        o.customers?.name || "",
+        o.customers?.whatsapp_phone || "",
+        o.delivery_address || "",
+        flavors,
+        o.pack_size,
+        o.total_price || 0,
+        o.delivery_zone || "",
+        o.estimated_delivery || "",
+        o.status,
+        date,
+      ].map(v => `"${String(v).replace(/"/g,'""')}"`).join(",");
+    });
+
+    const header = ["Orden","Cliente","Teléfono","Dirección","Items","Pack","Total","Zona","Entrega estimada","Estado","Fecha"].join(",");
+    const csv = [header, ...rows].join("\n");
+    const filename = `chef-papi-${week.label.replace(/\s/g,"-")}.csv`;
+
+    res.setHeader("Content-Type", "text/csv; charset=utf-8");
+    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+    res.send("﻿" + csv); // BOM for Excel UTF-8
+  } catch (err) {
+    console.error("CSV export error:", err);
+    res.status(500).send("Error exportando");
   }
 });
 
