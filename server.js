@@ -1662,6 +1662,25 @@ app.get("/admin", async (req, res) => {
           .empty { text-align:center; color:#555; padding:60px 20px; font-size:16px; }
         </style>
         <script>
+          async function testWebhook(pass) {
+            const btn = event.target;
+            btn.disabled = true; btn.textContent = 'Enviando...';
+            try {
+              const res = await fetch('/admin/test-webhook', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ pass })
+              });
+              const data = await res.json();
+              if (data.ok) {
+                alert('✅ Webhook enviado! Revisa tu Excel/Zapier ahora.');
+              } else {
+                alert('❌ Error: ' + (data.error || 'Unknown'));
+              }
+            } catch(e) { alert('❌ Error de conexión'); }
+            btn.disabled = false; btn.textContent = '🧪 Test Webhook';
+          }
+
           function updateBulkBtn() {
             const count = document.querySelectorAll('.order-cb:checked').length;
             const btn = document.getElementById('bulk-delete-btn');
@@ -1777,6 +1796,7 @@ app.get("/admin", async (req, res) => {
           ${nextLink}
           <a class="nav-btn" href="/admin?pass=${pass}">Hoy</a>
           <a class="action-btn" href="/admin/analytics?pass=${pass}">📊 Análisis mensual</a>
+          <button onclick="testWebhook('${pass}')" style="background:#6b7280;color:white;border:none;padding:8px 16px;border-radius:8px;cursor:pointer;font-size:13px">🧪 Test Webhook</button>
           <a class="nav-btn" href="/admin?pass=${pass}&week=${req.query.week||''}&tab=${tab}">🔄 Actualizar</a>
         </div>
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap">
@@ -2059,6 +2079,48 @@ app.post("/admin/deliver", async (req, res) => {
     res.json({ ok: true });
   } catch (err) {
     console.error("Deliver error:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ============================================================
+// ADMIN TEST WEBHOOK ENDPOINT
+// ============================================================
+app.post("/admin/test-webhook", async (req, res) => {
+  const { pass } = req.body;
+  if (pass !== (process.env.ADMIN_PASSWORD || "chefpapi2024")) {
+    return res.status(403).json({ error: "No autorizado" });
+  }
+  const SHEETS_WEBHOOK = process.env.SHEETS_WEBHOOK_URL;
+  if (!SHEETS_WEBHOOK) {
+    return res.status(400).json({ error: "SHEETS_WEBHOOK_URL no está configurado en Railway" });
+  }
+  try {
+    const now = getSDTime();
+    const pad = n => String(n).padStart(2, "0");
+    const h24 = now.getHours(), h12 = h24 % 12 || 12, ampm = h24 < 12 ? "AM" : "PM";
+    const timeStr = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())} ${h12}:${pad(now.getMinutes())}:${pad(now.getSeconds())} ${ampm} (Santo Domingo)`;
+    const response = await fetch(SHEETS_WEBHOOK, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        order_number:       "CP-TEST",
+        customer_name:      "Test Chef Papi",
+        phone:              "18091234567",
+        address:            "Av. Test 123, Piantini",
+        items:              "🧂 Natural x2, 🍅 Pomodoro x1",
+        pack_size:          3,
+        total:              "RD$990",
+        delivery_zone:      "Piantini",
+        estimated_delivery: "Hoy 45min - 3 horas",
+        timestamp:          timeStr,
+        status:             "TEST",
+      }),
+    });
+    console.log("Test webhook response status:", response.status);
+    res.json({ ok: true, status: response.status });
+  } catch (err) {
+    console.error("Test webhook error:", err);
     res.status(500).json({ error: err.message });
   }
 });
