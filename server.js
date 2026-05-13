@@ -1602,6 +1602,9 @@ app.get("/admin", async (req, res) => {
         <script>
           async function deleteOrder(orderId, orderNum, pass) {
             if (!confirm('⚠️ ¿Eliminar la orden ' + orderNum + '? Esta acción no se puede deshacer.')) return;
+            const pwd = prompt('Escribe tu contraseña para confirmar:');
+            if (!pwd) return;
+            if (pwd !== pass) { alert('Contraseña incorrecta.'); return; }
             try {
               const res = await fetch('/admin/delete-order', {
                 method: 'POST',
