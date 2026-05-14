@@ -493,11 +493,8 @@ async function handleMessage(phone, input) {
     case "DONE": {
       const greetings = ["hola","hello","hi","buenas","buen dia","buen día","buenos dias","buenos días","ey","hey","buenas tardes","buenas noches"];
       const isGreeting = greetings.includes(input.toLowerCase().trim());
-      if (input === "reorder" || input === "new_order") {
-        await handleReorderOrNew(phone, session, input);
-      } else if (isGreeting) {
-        await updateSession(phone, { state: "AWAITING_PACK" });
-        await sendWelcome(phone);
+      if (isGreeting) {
+        await sendDoneButtons(phone);
       } else if (isQuestion(input)) {
         const answer = await askAI(input);
         await sendMessage(phone, answer);
@@ -868,38 +865,6 @@ async function handleDeliveryConfirm(phone, session, input) {
   }
 }
 
-async function handleReorderOrNew(phone, session, input) {
-  if (input === "reorder") {
-    const lastOrder = await getLastOrder(phone);
-    if (!lastOrder) {
-      await updateSession(phone, { state: "AWAITING_PACK", pending_order: null });
-      await sendWelcome(phone);
-      return;
-    }
-    const summary  = buildSummary(lastOrder.flavors);
-    const customer = await getCustomer(phone);
-    await updateSession(phone, {
-      state: "AWAITING_CONFIRM",
-      pending_order: {
-        pack_size:        lastOrder.pack_size,
-        selections:       lastOrder.flavors,
-        price:            PRICES[lastOrder.pack_size],
-        customer_name:    customer.name,
-        delivery_address: customer.delivery_address,
-      },
-    });
-    await sendMessage(phone,
-      `Tu última orden:\n\n${summary}\n\n` +
-      `Subtotal: RD$${PRICES[lastOrder.pack_size].toLocaleString()}\n` +
-      `Delivery: RD$120\n` +
-      `*TOTAL: RD$${(PRICES[lastOrder.pack_size] + 120).toLocaleString()}*`
-    );
-    await sendConfirmButtons(phone);
-  } else {
-    await updateSession(phone, { state: "AWAITING_PACK", pending_order: null });
-    await sendWelcome(phone);
-  }
-}
 
 // ============================================================
 // ORDER CREATION & PAYMENT
@@ -1112,12 +1077,12 @@ async function askAI(question) {
 function isQuestion(input) {
   if (!input) return false;
   const commands = [
-    "3","5","10","confirm","change","reorder","new_order",
+    "3","5","8","10","confirm","change",
     "same_address","new_address","ncf_b01","ncf_b02","human",
     "zone_yes","zone_no","cancel_order",
     "type_casa","type_apto","company_name",
     "same_company","new_company",
-    "8","delivery_yes","delivery_no","district_yes","district_no","district_unsure"
+    "delivery_yes","delivery_no","district_yes","district_no","district_unsure"
   ];
   if (commands.includes(input)) return false;
   if (Object.keys(FLAVORS).includes(input)) return false;
@@ -1270,12 +1235,10 @@ async function sendDoneButtons(phone) {
     type: "interactive",
     interactive: {
       type: "button",
-      body: { text: "¿Qué más puedo hacer por ti? 👨‍🍳" },
+      body: { text: "¿Necesitas algo más? 👨‍🍳" },
       action: {
         buttons: [
-          { type: "reply", reply: { id: "reorder",   title: "🔄 Repetir orden" } },
-          { type: "reply", reply: { id: "new_order", title: "🛒 Nueva orden"          } },
-          { type: "reply", reply: { id: "human",     title: "💬 Hablar con equipo"   } },
+          { type: "reply", reply: { id: "human", title: "💬 Hablar con equipo" } },
         ],
       },
     },
@@ -1356,20 +1319,6 @@ async function upsertCustomer(phone, { name, delivery_address, rnc, company_name
   }
 }
 
-async function getLastOrder(phone) {
-  const customer = await getCustomer(phone);
-  if (!customer) return null;
-  const { data } = await supabase
-    .from("orders")
-    .select("*, order_items(*)")
-    .eq("customer_id", customer.id)
-    .eq("status", "paid")
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .single();
-  if (!data) return null;
-  return { pack_size: data.pack_size, flavors: data.order_items.map(i => i.flavor) };
-}
 
 // ============================================================
 // UTILS
