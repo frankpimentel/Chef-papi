@@ -33,6 +33,16 @@ const FLAVORS = {
 
 // ── PRICES ───────────────────────────────────────────────────
 const PRICES = { 3: 870, 5: 1450, 8: 2320 };
+const UNIT_PRICE = 290;
+
+// ── CATALOG ──────────────────────────────────────────────────
+const CATALOG_ID = "956996010479028";
+const CATALOG_PRODUCT_MAP = {
+  "1p7bh0r1kc": "natural",
+  "xnf2veolk3": "pomodoro",
+  "4ihnitfbi4": "pesto",
+  "ujflq59q37": "bbq",
+};
 
 // ── ERROR MESSAGES ───────────────────────────────────────────
 const ERROR_MESSAGES = [
@@ -353,6 +363,13 @@ app.post("/webhook", async (req, res) => {
 
     const phone = message.from;
     const type  = message.type;
+
+    // Catalog orders handled separately
+    if (type === "order") {
+      console.log(`📦 catalog order from ${phone}`);
+      await handleCatalogOrder(phone, message.order);
+      return;
+    }
 
     let input = "";
     if (type === "text") {
@@ -946,6 +963,66 @@ async function handleDeliveryConfirm(phone, session, input) {
 
 
 // ============================================================
+// CATALOG ORDER HANDLER
+// ============================================================
+async function handleCatalogOrder(phone, order) {
+  try {
+    // Build selections from catalog items
+    const selections = [];
+    for (const item of (order?.product_items || [])) {
+      const flavor = CATALOG_PRODUCT_MAP[item.product_retailer_id];
+      if (!flavor) continue;
+      for (let i = 0; i < (item.quantity || 1); i++) {
+        selections.push(flavor);
+      }
+    }
+
+    const totalUnits = selections.length;
+
+    if (totalUnits < 3) {
+      await sendMessage(phone,
+        `Necesitas mínimo 3 unidades 🍗\nTienes ${totalUnits} — agrega más y vuelve a enviar el carrito.`
+      );
+      await sendCatalogMessage(phone);
+      return;
+    }
+
+    const price   = totalUnits * UNIT_PRICE;
+    const summary = buildSummary(selections);
+
+    // Get or create session
+    let session = await getSession(phone);
+    if (!session) {
+      await createSession(phone);
+      session = await getSession(phone);
+    }
+
+    await updateSession(phone, {
+      state: "AWAITING_CONFIRM",
+      pending_order: {
+        pack_size:        totalUnits,
+        selections,
+        price,
+        customer_name:    session?.pending_order?.customer_name,
+        delivery_address: session?.pending_order?.delivery_address,
+        zone_hint:        session?.pending_order?.zone_hint,
+      },
+    });
+
+    await sendMessage(phone,
+      `🛒 Tu orden:\n\n${summary}\n\n` +
+      `Subtotal: RD$${price.toLocaleString()}\n` +
+      `Delivery: RD$120\n` +
+      `*TOTAL: RD$${(price + 120).toLocaleString()}*`
+    );
+    await sendConfirmButtons(phone);
+  } catch (err) {
+    console.error("handleCatalogOrder error:", err);
+    await sendMessage(phone, randomError());
+  }
+}
+
+// ============================================================
 // ORDER CREATION & PAYMENT
 // ============================================================
 async function createOrderAndCharge(phone, session, address) {
@@ -1219,22 +1296,30 @@ async function sendZoneCheck(phone) {
 async function sendWelcome(phone) {
   const customer = await getCustomer(phone);
   const greeting = customer
-    ? `¡Qué lo qué ${customer.name}! 👋`
-    : "¡Brutal! Vamos a hacer tu orden 🍗";
+    ? `¡Qué lo qué ${customer.name}! 👋\nEscoge tus sabores — mínimo 3 unidades. Mezcla como quieras 🍗`
+    : `¡Brutal! Vamos a hacer tu orden.\nEscoge tus sabores — mínimo 3 unidades. Mezcla como quieras 🍗`;
+  await sendMessage(phone, greeting);
+  await sendCatalogMessage(phone);
+}
 
+async function sendCatalogMessage(phone) {
   await sendWA(phone, {
     type: "interactive",
     interactive: {
-      type: "button",
+      type: "product_list",
       header: { type: "text", text: "Chef Papi 🍗" },
-      body:   { text: `${greeting}\nPollo al grill, listo para tu semana.\n\nPack de 3 — Para probar 🍗\nPack de 5 — Tu proteína semanal 💪\nPack de 8 — El atleta serio 🔥\n\nRD$290 por unidad. ¿Cuál quieres?` },
-      footer: { text: "Entrega fría. RD$120 delivery." },
+      body:   { text: "Escoge tus sabores 👇\nRD$290 por unidad · Mínimo 3 · Delivery RD$120" },
       action: {
-        buttons: [
-          { type: "reply", reply: { id: "3", title: "Pack de 3 — RD$870" } },
-          { type: "reply", reply: { id: "5", title: "Pack de 5 — RD$1,450"} },
-          { type: "reply", reply: { id: "8", title: "Pack de 8 — RD$2,320"} },
-        ],
+        catalog_id: CATALOG_ID,
+        sections: [{
+          title: "Nuestros sabores",
+          product_items: [
+            { product_retailer_id: "1p7bh0r1kc" },
+            { product_retailer_id: "xnf2veolk3" },
+            { product_retailer_id: "4ihnitfbi4" },
+            { product_retailer_id: "ujflq59q37" },
+          ],
+        }],
       },
     },
   });
