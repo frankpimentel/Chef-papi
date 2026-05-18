@@ -232,6 +232,85 @@ app.get("/webhook", (req, res) => {
 });
 
 // ============================================================
+// PRODUCT PAGES
+// ============================================================
+const PRODUCT_PAGES = {
+  natural: {
+    name: "Natural — Sal & Pimienta",
+    emoji: "🧂",
+    description: "Pechuga de pollo al grill con sal y pimienta. Sabor limpio, proteína pura. Perfecta para tus meals de la semana.",
+    price: "RD$290 por unidad",
+    color: "#f97316",
+  },
+  pomodoro: {
+    name: "Pomodoro",
+    emoji: "🍅",
+    description: "Pechuga al grill con salsa pomodoro italiana. Un toque diferente que nunca falla.",
+    price: "RD$290 por unidad",
+    color: "#ef4444",
+  },
+  pesto: {
+    name: "Pesto",
+    emoji: "🌿",
+    description: "Pechuga al grill con pesto de albahaca. Fresco, aromático y lleno de sabor.",
+    price: "RD$290 por unidad",
+    color: "#22c55e",
+  },
+  bbq: {
+    name: "Barbecue",
+    emoji: "🔥",
+    description: "Pechuga al grill con salsa BBQ. Ahumada, dulce y adictiva. La favorita de muchos.",
+    price: "RD$290 por unidad",
+    color: "#f59e0b",
+  },
+};
+
+app.get("/product/:flavor", (req, res) => {
+  const p = PRODUCT_PAGES[req.params.flavor];
+  if (!p) return res.status(404).send("Producto no encontrado");
+  const waLink = `https://wa.me/18098831687?text=${encodeURIComponent(`Hola! Quiero ordenar ${p.emoji} ${p.name}`)}`;
+  res.send(`<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>${p.name} — Chef Papi</title>
+  <meta property="og:title" content="${p.name} — Chef Papi"/>
+  <meta property="og:description" content="${p.description}"/>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, sans-serif; background: #111; color: #eee; min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px; }
+    .card { background: #1a1a1a; border-radius: 20px; max-width: 400px; width: 100%; overflow: hidden; }
+    .hero { background: ${p.color}22; border-bottom: 1px solid #333; padding: 48px 24px; text-align: center; font-size: 80px; }
+    .body { padding: 28px 24px; }
+    .brand { color: ${p.color}; font-size: 13px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
+    h1 { font-size: 26px; font-weight: bold; margin-bottom: 12px; }
+    p { color: #aaa; line-height: 1.6; margin-bottom: 20px; }
+    .price { font-size: 22px; font-weight: bold; color: ${p.color}; margin-bottom: 24px; }
+    .detail { color: #666; font-size: 13px; margin-bottom: 24px; }
+    .btn { display: block; background: #25d366; color: white; text-decoration: none; text-align: center; padding: 16px; border-radius: 12px; font-size: 16px; font-weight: bold; }
+    .btn:hover { background: #20b858; }
+    .footer { margin-top: 24px; color: #555; font-size: 12px; text-align: center; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="hero">${p.emoji}</div>
+    <div class="body">
+      <div class="brand">Chef Papi 🍗</div>
+      <h1>${p.name}</h1>
+      <p>${p.description}</p>
+      <div class="price">${p.price}</div>
+      <div class="detail">~200g de pollo cocido · ~55g proteína · Mínimo 3 unidades · Delivery RD$120</div>
+      <a href="${waLink}" class="btn">💬 Ordenar por WhatsApp</a>
+    </div>
+  </div>
+  <div class="footer">Solo entregamos en Santo Domingo · Pedidos antes 3:30PM llegan hoy</div>
+</body>
+</html>`);
+});
+
+// ============================================================
 // PRIVACY PAGE
 // ============================================================
 app.get("/privacy", (req, res) => {
