@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8"/>
+  <title>Chef Papi — Catalog Images</title>
+  <style>
+    body { font-family: -apple-system, sans-serif; background: #111; color: #eee; padding: 40px; }
+    h1 { color: #f97316; margin-bottom: 8px; }
+    p { color: #888; margin-bottom: 40px; font-size: 14px; }
+    .grid { display: flex; flex-wrap: wrap; gap: 32px; }
+    .item { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+    canvas { border-radius: 16px; box-shadow: 0 8px 32px rgba(0,0,0,0.5); }
+    .btn { background: #f97316; color: white; border: none; padding: 10px 24px; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: bold; }
+    .btn:hover { background: #ea6c10; }
+  </style>
+</head>
+<body>
+  <h1>🍗 Chef Papi — Catalog Images</h1>
+  <p>Click "Descargar" under each image to save a 1000×1000 PNG ready to upload to Meta Commerce Manager.</p>
+  <div class="grid" id="grid"></div>
+
+  <script>
+    const products = [
+      { id: "natural",  emoji: "🧂", name: "Natural",   sub: "Sal & Pimienta", bg: "#1a1208", accent: "#f97316", text: "#fff" },
+      { id: "pomodoro", emoji: "🍅", name: "Pomodoro",  sub: "Salsa italiana", bg: "#1a0808", accent: "#ef4444", text: "#fff" },
+      { id: "pesto",    emoji: "🌿", name: "Pesto",     sub: "Albahaca fresca", bg: "#081a0c", accent: "#22c55e", text: "#fff" },
+      { id: "bbq",      emoji: "🔥", name: "Barbecue",  sub: "Salsa ahumada",  bg: "#1a1008", accent: "#f59e0b", text: "#fff" },
+    ];
+
+    const SIZE = 400; // display size (actual canvas is 1000x1000)
+    const REAL = 1000;
+
+    products.forEach(p => {
+      const canvas = document.createElement("canvas");
+      canvas.width  = REAL;
+      canvas.height = REAL;
+      canvas.style.width  = SIZE + "px";
+      canvas.style.height = SIZE + "px";
+
+      const ctx = canvas.getContext("2d");
+
+      // Background
+      ctx.fillStyle = p.bg;
+      ctx.fillRect(0, 0, REAL, REAL);
+
+      // Gradient overlay
+      const grad = ctx.createRadialGradient(500, 380, 0, 500, 500, 700);
+      grad.addColorStop(0, p.accent + "33");
+      grad.addColorStop(1, "transparent");
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, REAL, REAL);
+
+      // Top accent bar
+      ctx.fillStyle = p.accent;
+      ctx.fillRect(0, 0, REAL, 8);
+
+      // Brand label
+      ctx.fillStyle = p.accent;
+      ctx.font = "bold 36px -apple-system, sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText("CHEF PAPI 🍗", 500, 80);
+
+      // Emoji (big, centered)
+      ctx.font = "280px serif";
+      ctx.textAlign = "center";
+      ctx.fillText(p.emoji, 500, 480);
+
+      // Product name
+      ctx.fillStyle = "#ffffff";
+      ctx.font = "bold 88px -apple-system, sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText(p.name.toUpperCase(), 500, 640);
+
+      // Subtitle
+      ctx.fillStyle = p.accent;
+      ctx.font = "44px -apple-system, sans-serif";
+      ctx.fillText(p.sub, 500, 705);
+
+      // Divider
+      ctx.strokeStyle = p.accent + "55";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(200, 740);
+      ctx.lineTo(800, 740);
+      ctx.stroke();
+
+      // Price + details
+      ctx.fillStyle = "#ffffff";
+      ctx.font = "bold 52px -apple-system, sans-serif";
+      ctx.fillText("RD$290 por unidad", 500, 820);
+
+      ctx.fillStyle = "#aaaaaa";
+      ctx.font = "34px -apple-system, sans-serif";
+      ctx.fillText("~200g · ~55g proteína · Al grill", 500, 880);
+
+      // Bottom bar
+      ctx.fillStyle = p.accent + "22";
+      ctx.fillRect(0, 930, REAL, 70);
+      ctx.fillStyle = p.accent;
+      ctx.font = "28px -apple-system, sans-serif";
+      ctx.fillText("integra-foods.com  ·  WhatsApp 809-883-1687", 500, 974);
+
+      // Add to grid
+      const btn = document.createElement("button");
+      btn.className = "btn";
+      btn.textContent = "⬇️ Descargar " + p.name;
+      btn.onclick = () => {
+        const link = document.createElement("a");
+        link.download = "chef-papi-" + p.id + ".png";
+        link.href = canvas.toDataURL("image/png");
+        link.click();
+      };
+
+      const item = document.createElement("div");
+      item.className = "item";
+      item.appendChild(canvas);
+      item.appendChild(btn);
+      document.getElementById("grid").appendChild(item);
+    });
+  </script>
+</body>
+</html>
