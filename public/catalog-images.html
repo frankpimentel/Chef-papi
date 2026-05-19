@@ -21,10 +21,10 @@
 
   <script>
     const products = [
-      { id: "natural",  emoji: "🧂", name: "Natural",   sub: "Sal & Pimienta", bg: "#1a1208", accent: "#f97316", text: "#fff" },
-      { id: "pomodoro", emoji: "🍅", name: "Pomodoro",  sub: "Salsa italiana", bg: "#1a0808", accent: "#ef4444", text: "#fff" },
-      { id: "pesto",    emoji: "🌿", name: "Pesto",     sub: "Albahaca fresca", bg: "#081a0c", accent: "#22c55e", text: "#fff" },
-      { id: "bbq",      emoji: "🔥", name: "Barbecue",  sub: "Salsa ahumada",  bg: "#1a1008", accent: "#f59e0b", text: "#fff" },
+      { id: "natural",  emoji: "🧂", name: "Salt & Pepper",      sub: "Sal & Pimienta",      weight: "200g", protein: "~63g", bg: "#1a1208", accent: "#f97316", text: "#fff" },
+      { id: "pomodoro", emoji: "🍅", name: "Marinara",            sub: "Salsa italiana",      weight: "280g", protein: "~61g", bg: "#1a0808", accent: "#ef4444", text: "#fff" },
+      { id: "pesto",    emoji: "🌿", name: "Pesto",               sub: "Albahaca & Parmesano",weight: "280g", protein: "~65g", bg: "#081a0c", accent: "#22c55e", text: "#fff" },
+      { id: "bbq",      emoji: "🔥", name: "BBQ Glaze",           sub: "Salsa ahumada",       weight: "280g", protein: "~61g", bg: "#1a1008", accent: "#f59e0b", text: "#fff" },
     ];
 
     const SIZE = 400; // display size (actual canvas is 1000x1000)
@@ -91,7 +91,7 @@
 
       ctx.fillStyle = "#aaaaaa";
       ctx.font = "34px -apple-system, sans-serif";
-      ctx.fillText("~200g · ~55g proteína · Al grill", 500, 880);
+      ctx.fillText(`${p.weight} · ${p.protein} proteína · Al grill`, 500, 880);
 
       // Bottom bar
       ctx.fillStyle = p.accent + "22";

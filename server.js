@@ -25,10 +25,54 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // ── FLAVORS ──────────────────────────────────────────────────
 const FLAVORS = {
-  natural:  { title: "Natural Sal & Pimienta",  emoji: "🧂", short: "Natural" },
-  pomodoro: { title: "Pomodoro",                 emoji: "🍅", short: "Pomodoro" },
-  pesto:    { title: "Pesto",                    emoji: "🌿", short: "Pesto" },
-  bbq:      { title: "Barbecue",                 emoji: "🔥", short: "Barbecue" },
+  natural:  { title: "Salt & Pepper",       emoji: "🧂", short: "Salt & Pepper" },
+  pomodoro: { title: "Marinara",             emoji: "🍅", short: "Marinara" },
+  pesto:    { title: "Pesto de Albahaca",    emoji: "🌿", short: "Pesto" },
+  bbq:      { title: "BBQ Glaze",            emoji: "🔥", short: "BBQ" },
+};
+
+// ── NUTRITION ─────────────────────────────────────────────────
+const NUTRITION = {
+  natural: {
+    name: "Salt & Pepper",
+    weight: "200g",
+    cals: "~310 kcal",
+    protein: "~63g",
+    fat: "~7g",
+    carbs: "~0g",
+    sugar: "~0g",
+    allergens: null,
+  },
+  pomodoro: {
+    name: "Marinara",
+    weight: "280g",
+    cals: "~368 kcal",
+    protein: "~61g",
+    fat: "~8.5g",
+    carbs: "~6.9g",
+    sugar: "~4.6g",
+    allergens: null,
+  },
+  pesto: {
+    name: "Pesto de Albahaca",
+    weight: "280g",
+    cals: "~592 kcal",
+    protein: "~65g",
+    fat: "~38g",
+    carbs: "~2.5g",
+    sugar: "~0.4g",
+    allergens: "Lácteos (Queso Parmesano)",
+  },
+  bbq: {
+    name: "BBQ Glaze",
+    weight: "280g",
+    cals: "~439 kcal",
+    protein: "~61g",
+    fat: "~9.2g",
+    carbs: "~25.3g",
+    sugar: "~22.5g",
+    allergens: "Mostaza",
+  },
 };
 
 // ── PRICES ───────────────────────────────────────────────────
@@ -192,17 +236,19 @@ INFORMACIÓN DEL PRODUCTO:
 - Pollo cocinado al grill para darle ese delicioso sabor que usted merece
 - Pollo importado de alta calidad, el mismo tipo que usan los mejores restaurantes en RD
 - Cocinado al grill aquí mismo en Santo Domingo
-- Cada unidad tiene aproximadamente 200g de pollo cocido con ~55g de proteína
-- Sabores: Natural (Sal y Pimienta), Pomodoro, Pesto, Barbecue
+- Sabores disponibles: Salt & Pepper, Marinara, Pesto de Albahaca, BBQ Glaze
 - NO calentar en el envase plástico. Pasar el pollo a un plato antes de calentar.
 - Dura 6 días en la nevera después de descongelado. Nunca romper la cadena de frío.
 - Se puede congelar. Para descongelar, poner en la nevera un día antes de comer.
-- El pack de 5 resuelve tu proteína toda la semana.
+
+INFORMACIÓN NUTRICIONAL (por unidad):
+Salt & Pepper — ~310 kcal | Proteína: ~63g | Grasas: ~7g | Carbs: ~0g | Sin alérgenos
+Marinara — 280g — ~368 kcal | Proteína: ~61g | Grasas: ~8.5g | Carbs: ~6.9g | Sin alérgenos
+Pesto de Albahaca — 280g — ~592 kcal | Proteína: ~65g | Grasas: ~38g | Carbs: ~2.5g | ⚠️ Contiene: Lácteos (Queso Parmesano)
+BBQ Glaze — 280g — ~439 kcal | Proteína: ~61g | Grasas: ~9.2g | Carbs: ~25.3g | ⚠️ Contiene: Mostaza
 
 PRECIOS:
-- Pack de 3 unidades: RD$870 (RD$290 por unidad)
-- Pack de 5 unidades: RD$1,450 (RD$290 por unidad)
-- Pack de 8 unidades: RD$2,320 (RD$290 por unidad)
+- RD$290 por unidad, mínimo 3 unidades
 - Delivery: RD$120
 
 ENTREGAS:
@@ -215,6 +261,8 @@ CANCELACIONES:
 - Una vez la orden está creada y facturada no se puede cancelar ni cambiar
 
 ALÉRGENOS:
+- Pesto de Albahaca contiene lácteos (queso parmesano)
+- BBQ Glaze contiene mostaza
 - Ningún producto contiene nuez
 
 INSTRUCCIONES:
@@ -246,32 +294,36 @@ app.get("/webhook", (req, res) => {
 // ============================================================
 const PRODUCT_PAGES = {
   natural: {
-    name: "Natural — Sal & Pimienta",
+    name: "Salt & Pepper",
     emoji: "🧂",
     description: "Pechuga de pollo al grill con sal y pimienta. Sabor limpio, proteína pura. Perfecta para tus meals de la semana.",
     price: "RD$290 por unidad",
     color: "#f97316",
+    nutri: NUTRITION.natural,
   },
   pomodoro: {
-    name: "Pomodoro",
+    name: "Marinara",
     emoji: "🍅",
-    description: "Pechuga al grill con salsa pomodoro italiana. Un toque diferente que nunca falla.",
+    description: "Pechuga al grill con salsa marinara italiana. Un toque diferente que nunca falla.",
     price: "RD$290 por unidad",
     color: "#ef4444",
+    nutri: NUTRITION.pomodoro,
   },
   pesto: {
-    name: "Pesto",
+    name: "Pesto de Albahaca",
     emoji: "🌿",
-    description: "Pechuga al grill con pesto de albahaca. Fresco, aromático y lleno de sabor.",
+    description: "Pechuga al grill con pesto de albahaca fresca y queso parmesano. Fresco, aromático y lleno de sabor.",
     price: "RD$290 por unidad",
     color: "#22c55e",
+    nutri: NUTRITION.pesto,
   },
   bbq: {
-    name: "Barbecue",
+    name: "BBQ Glaze",
     emoji: "🔥",
-    description: "Pechuga al grill con salsa BBQ. Ahumada, dulce y adictiva. La favorita de muchos.",
+    description: "Pechuga al grill con salsa BBQ glaze. Ahumada, dulce y adictiva. La favorita de muchos.",
     price: "RD$290 por unidad",
     color: "#f59e0b",
+    nutri: NUTRITION.bbq,
   },
 };
 
@@ -295,9 +347,16 @@ app.get("/product/:flavor", (req, res) => {
     .body { padding: 28px 24px; }
     .brand { color: ${p.color}; font-size: 13px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
     h1 { font-size: 26px; font-weight: bold; margin-bottom: 12px; }
-    p { color: #aaa; line-height: 1.6; margin-bottom: 20px; }
-    .price { font-size: 22px; font-weight: bold; color: ${p.color}; margin-bottom: 24px; }
-    .detail { color: #666; font-size: 13px; margin-bottom: 24px; }
+    .desc { color: #aaa; line-height: 1.6; margin-bottom: 20px; }
+    .price { font-size: 22px; font-weight: bold; color: ${p.color}; margin-bottom: 20px; }
+    .nutri { background: #222; border-radius: 12px; padding: 16px; margin-bottom: 20px; }
+    .nutri-title { color: #888; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; }
+    .nutri-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .nutri-item { text-align: center; }
+    .nutri-val { font-size: 18px; font-weight: bold; color: ${p.color}; }
+    .nutri-label { font-size: 11px; color: #666; margin-top: 2px; }
+    .allergen { color: #f59e0b; font-size: 12px; margin-top: 10px; }
+    .detail { color: #555; font-size: 12px; margin-bottom: 20px; }
     .btn { display: block; background: #25d366; color: white; text-decoration: none; text-align: center; padding: 16px; border-radius: 12px; font-size: 16px; font-weight: bold; }
     .btn:hover { background: #20b858; }
     .footer { margin-top: 24px; color: #555; font-size: 12px; text-align: center; }
@@ -309,9 +368,19 @@ app.get("/product/:flavor", (req, res) => {
     <div class="body">
       <div class="brand">Chef Papi 🍗</div>
       <h1>${p.name}</h1>
-      <p>${p.description}</p>
+      <div class="desc">${p.description}</div>
       <div class="price">${p.price}</div>
-      <div class="detail">~200g de pollo cocido · ~55g proteína · Mínimo 3 unidades · Delivery RD$120</div>
+      <div class="nutri">
+        <div class="nutri-title">Información Nutricional · ${p.nutri.weight}</div>
+        <div class="nutri-grid">
+          <div class="nutri-item"><div class="nutri-val">${p.nutri.cals}</div><div class="nutri-label">Calorías</div></div>
+          <div class="nutri-item"><div class="nutri-val">${p.nutri.protein}</div><div class="nutri-label">Proteína</div></div>
+          <div class="nutri-item"><div class="nutri-val">${p.nutri.fat}</div><div class="nutri-label">Grasas</div></div>
+          <div class="nutri-item"><div class="nutri-val">${p.nutri.carbs}</div><div class="nutri-label">Carbohidratos</div></div>
+        </div>
+        ${p.nutri.allergens ? `<div class="allergen">⚠️ Contiene: ${p.nutri.allergens}</div>` : ""}
+      </div>
+      <div class="detail">Mínimo 3 unidades · Delivery RD$120</div>
       <a href="${waLink}" class="btn">💬 Ordenar por WhatsApp</a>
     </div>
   </div>
