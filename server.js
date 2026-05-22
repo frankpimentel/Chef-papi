@@ -132,18 +132,18 @@ async function createAlegraInvoice(order) {
 
         // Alegra returns array of contacts OR {errors:[...]}
         const existingContact = Array.isArray(searchData)
-          ? searchData.find(c => c.identification === order.rnc || c.id)
+          ? searchData.find(c => c.identification === order.rnc)
           : null;
 
         if (existingContact?.id) {
           clientPayload = { id: existingContact.id };
           console.log(`✅ Alegra client found: id=${existingContact.id} — ${existingContact.name}`);
         } else {
-          // 2. Not found — create new company contact (no phone to avoid format errors)
+          // 2. Not found — create new company contact
           const contactBody = {
             name:           order.company_name || "Empresa",
             identification: order.rnc,
-            type:           ["client"],
+            type:           "client",
           };
           console.log(`Creating Alegra contact:`, JSON.stringify(contactBody));
           const createResp = await fetch(`${ALEGRA_BASE}/contacts`, {
