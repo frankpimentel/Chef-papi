@@ -113,31 +113,40 @@ async function createAlegraInvoice(order) {
     // Add delivery line
     lines.push({ id: ALEGRA_ITEMS.delivery, price: 120, quantity: 1 });
 
-    // Resolve Alegra client — create named client if they have RNC, else use Consumidor Final (id:1)
+    // Resolve Alegra client
+    // B01 (Crédito Fiscal): find or create company contact by RNC
+    // B02 (Consumidor Final): use default Consumidor Final (id:1)
     let clientPayload = { id: 1 }; // Consumidor Final (default)
-    if (order.customers?.rnc) {
-      // Try to find or create a client with their RNC
+    if (order.ncf_type === "B01" && order.rnc) {
       try {
+        // Search by RNC/identification
         const searchResp = await fetch(
-          `${ALEGRA_BASE}/contacts?metadata=true&name=${encodeURIComponent(order.customers.name || "")}&limit=1`,
+          `${ALEGRA_BASE}/contacts?identification=${encodeURIComponent(order.rnc)}&limit=1`,
           { headers: { "Authorization": `Basic ${auth}` } }
         );
         const searchData = await searchResp.json();
-        if (searchData?.[0]?.id) {
+        if (Array.isArray(searchData) && searchData[0]?.id) {
           clientPayload = { id: searchData[0].id };
+          console.log(`Alegra client found by RNC: ${searchData[0].id} — ${searchData[0].name}`);
         } else {
+          // Create new company contact
           const createResp = await fetch(`${ALEGRA_BASE}/contacts`, {
             method: "POST",
             headers: { "Content-Type": "application/json", "Authorization": `Basic ${auth}` },
             body: JSON.stringify({
-              name: order.customers.name || "Cliente",
-              identification: order.customers.rnc,
-              phonePrimary: order.phone,
-              type: ["client"],
+              name:           order.company_name || order.customers?.name || "Empresa",
+              identification: order.rnc,
+              phonePrimary:   order.phone,
+              type:           ["client"],
             }),
           });
           const created = await createResp.json();
-          if (created?.id) clientPayload = { id: created.id };
+          if (created?.id) {
+            clientPayload = { id: created.id };
+            console.log(`Alegra client created: ${created.id} — ${created.name} (RNC: ${order.rnc})`);
+          } else {
+            console.error("Alegra client creation failed:", JSON.stringify(created));
+          }
         }
       } catch (e) {
         console.error("Alegra client lookup failed, using Consumidor Final:", e.message);
@@ -1252,6 +1261,8 @@ async function createOrderAndCharge(phone, session, address) {
       delivery_zone:      order.delivery_zone || null,
       estimated_delivery: order.estimated_delivery || null,
       ncf_type:           order.ncf_type || "B02",
+      rnc:                order.rnc || null,
+      company_name:       order.company_name || null,
     })
     .select()
     .single();
