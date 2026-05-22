@@ -1192,7 +1192,14 @@ async function handleCatalogOrder(phone, order) {
 async function createOrderAndCharge(phone, session, address) {
   address = address || session.pending_order?.delivery_address;
   const order    = session.pending_order;
+
+  console.log("createOrderAndCharge — order:", JSON.stringify({ pack_size: order?.pack_size, price: order?.price, selections: order?.selections?.length, address }));
+
   const customer = await getCustomer(phone);
+  if (!customer) {
+    console.error("createOrderAndCharge — customer not found for phone:", phone);
+    throw new Error("Customer not found");
+  }
 
   // Always compute zone from address if not already set
   if (!order.delivery_zone && address) {
@@ -1202,12 +1209,14 @@ async function createOrderAndCharge(phone, session, address) {
     order.estimated_delivery = delivery ? delivery.estimated : "Por confirmar";
   }
 
-  const { data: newOrder } = await supabase
+  const totalPrice = (order.price || 0) + 120;
+
+  const { data: newOrder, error: insertError } = await supabase
     .from("orders")
     .insert({
       customer_id:        customer.id,
       pack_size:          order.pack_size,
-      total_price:        order.price + 120,
+      total_price:        totalPrice,
       status:             "pending",
       delivery_address:   address,
       delivery_zone:      order.delivery_zone || null,
@@ -1215,6 +1224,11 @@ async function createOrderAndCharge(phone, session, address) {
     })
     .select()
     .single();
+
+  if (!newOrder || insertError) {
+    console.error("createOrderAndCharge — order insert failed:", insertError, "order data:", JSON.stringify(order));
+    throw new Error("Order insert failed: " + (insertError?.message || "unknown"));
+  }
 
   const items = (order.selections || []).map((flavor, i) => ({
     order_id:    newOrder.id,
