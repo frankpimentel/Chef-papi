@@ -26,7 +26,7 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 // ── FLAVORS ──────────────────────────────────────────────────
 const FLAVORS = {
   natural:  { title: "Salt & Pepper",       emoji: "🧂", short: "Salt & Pepper" },
-  pomodoro: { title: "Marinara",             emoji: "🍅", short: "Marinara" },
+  pomodoro: { title: "Pomodoro",              emoji: "🍅", short: "Pomodoro" },
   pesto:    { title: "Pesto de Albahaca",    emoji: "🌿", short: "Pesto" },
   bbq:      { title: "BBQ Glaze",            emoji: "🔥", short: "BBQ" },
 };
