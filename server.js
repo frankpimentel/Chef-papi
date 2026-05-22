@@ -2209,6 +2209,229 @@ app.get("/admin", async (req, res) => {
 });
 
 // ============================================================
+// LOGISTICS PAGE
+// ============================================================
+app.get("/logistics", async (req, res) => {
+  const { pass } = req.query;
+  const LOGISTICS_PASS = process.env.LOGISTICS_PASSWORD || "delivery2024";
+  if (!pass) {
+    return res.send(`<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Chef Papi — Logistics</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, sans-serif; background: #111; color: #eee;
+           min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; }
+    .card { background: #1a1a1a; border-radius: 16px; padding: 32px 24px; width: 100%; max-width: 360px; text-align: center; }
+    h1 { color: #f97316; font-size: 22px; margin-bottom: 6px; }
+    p  { color: #888; font-size: 13px; margin-bottom: 24px; }
+    input { width: 100%; padding: 14px; border-radius: 10px; border: 1px solid #333;
+            background: #222; color: #eee; font-size: 16px; margin-bottom: 12px; text-align: center; letter-spacing: 4px; }
+    button { width: 100%; padding: 14px; border-radius: 10px; border: none;
+             background: #f97316; color: white; font-size: 16px; font-weight: bold; cursor: pointer; }
+    button:hover { background: #ea6c10; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>🛵 Chef Papi Logistics</h1>
+    <p>Ingresa tu contraseña para ver las órdenes de hoy</p>
+    <input type="password" id="pw" placeholder="••••••••" onkeydown="if(event.key==='Enter') login()"/>
+    <button onclick="login()">Entrar</button>
+  </div>
+  <script>
+    function login() {
+      const pw = document.getElementById('pw').value;
+      window.location.href = '/logistics?pass=' + encodeURIComponent(pw);
+    }
+  </script>
+</body>
+</html>`);
+  }
+
+  if (pass !== LOGISTICS_PASS) {
+    return res.send(`<!DOCTYPE html><html><body style="background:#111;color:#ef4444;font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;font-size:20px">
+      ❌ Contraseña incorrecta. <a href="/logistics" style="color:#f97316;margin-left:8px">Volver</a></body></html>`);
+  }
+
+  try {
+    // Today's orders in Santo Domingo time (UTC-4)
+    const now = getSDTime();
+    const startOfDay = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate(), 4, 0, 0)); // midnight SD = 04:00 UTC
+    const endOfDay   = new Date(startOfDay.getTime() + 24 * 60 * 60 * 1000);
+
+    const { data: orders } = await supabase
+      .from("orders")
+      .select("*, customers(*), order_items(*)")
+      .in("status", ["paid", "en_curso"])
+      .gte("created_at", startOfDay.toISOString())
+      .lt("created_at", endOfDay.toISOString())
+      .order("created_at", { ascending: true });
+
+    const cards = (orders || []).map(o => {
+      const orderNum = `CP-${String(o.id).padStart(5, "0")}`;
+      const phone    = o.customers?.whatsapp_phone || "";
+      const flavors  = (o.order_items || []).reduce((acc, i) => {
+        const f = FLAVORS[i.flavor];
+        acc[f?.short || i.flavor] = (acc[f?.short || i.flavor] || 0) + 1;
+        return acc;
+      }, {});
+      const flavorStr = Object.entries(flavors).map(([name, qty]) => `${qty}x ${name}`).join(" · ");
+      const waLink    = `https://wa.me/${phone}`;
+      const isPaid    = o.status === "paid";
+      const isEnCurso = o.status === "en_curso";
+
+      return `
+      <div class="card" id="card-${o.id}">
+        <div class="card-header">
+          <span class="order-num">${orderNum}</span>
+          <span class="badge ${isPaid ? 'badge-paid' : 'badge-curso'}">${isPaid ? 'Pagado' : 'En camino'}</span>
+        </div>
+        <div class="customer">${o.customers?.name || "—"}</div>
+        <div class="address">📍 ${o.delivery_address || "—"}</div>
+        <div class="items">🍗 ${flavorStr}</div>
+        <div class="total">RD$${(o.total_price || 0).toLocaleString()}</div>
+        <div class="actions">
+          <a href="${waLink}" target="_blank" class="btn-wa">💬 WhatsApp</a>
+          ${isPaid ? `
+          <div class="link-row">
+            <input id="link-${o.id}" type="url" placeholder="Link de tracking (opcional)" style="flex:1;padding:10px;border-radius:8px;border:1px solid #333;background:#1a1a1a;color:#eee;font-size:13px"/>
+            <button class="btn-primary" onclick="enviarLink(${o.id},'${orderNum}','${phone}')">📍 Enviar Link</button>
+          </div>` : ""}
+          ${isEnCurso ? `
+          <button class="btn-success" onclick="marcarEntregado(${o.id},'${orderNum}','${phone}')">✅ Marcar Entregado</button>
+          ` : ""}
+        </div>
+      </div>`;
+    }).join("");
+
+    const emptyState = (orders || []).length === 0
+      ? `<div style="text-align:center;color:#555;padding:60px 20px;font-size:18px">🎉 No hay órdenes pendientes por ahora</div>`
+      : "";
+
+    res.send(`<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Chef Papi — Logistics</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, sans-serif; background: #111; color: #eee; padding: 16px; min-height: 100vh; }
+    .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; padding-bottom: 16px; border-bottom: 1px solid #222; }
+    .header h1 { color: #f97316; font-size: 20px; }
+    .header .count { background: #f97316; color: white; padding: 4px 12px; border-radius: 20px; font-size: 13px; font-weight: bold; }
+    .refresh { color: #888; font-size: 13px; cursor: pointer; text-decoration: underline; }
+    .card { background: #1a1a1a; border-radius: 14px; padding: 16px; margin-bottom: 14px; border-left: 4px solid #f97316; }
+    .card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+    .order-num { font-weight: bold; font-size: 16px; color: #f97316; }
+    .badge { padding: 3px 10px; border-radius: 20px; font-size: 12px; font-weight: bold; }
+    .badge-paid  { background: #1e40af22; color: #60a5fa; border: 1px solid #1e40af; }
+    .badge-curso { background: #78350f22; color: #fbbf24; border: 1px solid #78350f; }
+    .customer { font-size: 16px; font-weight: 600; margin-bottom: 6px; }
+    .address { color: #aaa; font-size: 13px; margin-bottom: 4px; }
+    .items { color: #f97316; font-size: 13px; margin-bottom: 4px; }
+    .total { color: #22c55e; font-size: 14px; font-weight: bold; margin-bottom: 14px; }
+    .actions { display: flex; flex-direction: column; gap: 8px; }
+    .link-row { display: flex; gap: 8px; align-items: center; }
+    .btn-wa      { display: block; text-align: center; padding: 10px; border-radius: 8px; background: #25d36622; color: #25d366; border: 1px solid #25d366; font-size: 14px; font-weight: bold; text-decoration: none; }
+    .btn-primary { padding: 10px 14px; border-radius: 8px; background: #3b82f6; color: white; border: none; font-size: 13px; font-weight: bold; cursor: pointer; white-space: nowrap; }
+    .btn-primary:active { background: #2563eb; }
+    .btn-success { padding: 12px; border-radius: 8px; background: #22c55e; color: white; border: none; font-size: 15px; font-weight: bold; cursor: pointer; width: 100%; }
+    .btn-success:active { background: #16a34a; }
+    .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+             background: #22c55e; color: white; padding: 12px 24px; border-radius: 10px;
+             font-weight: bold; display: none; z-index: 999; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>🛵 Logistics</h1>
+    <div style="display:flex;align-items:center;gap:10px">
+      <span class="count">${(orders || []).length} orden${(orders || []).length !== 1 ? "es" : ""}</span>
+      <span class="refresh" onclick="location.reload()">↻ Actualizar</span>
+    </div>
+  </div>
+  ${emptyState}
+  ${cards}
+  <div class="toast" id="toast"></div>
+
+  <script>
+    const PASS = ${JSON.stringify(pass)};
+
+    function showToast(msg, color='#22c55e') {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.style.background = color;
+      t.style.display = 'block';
+      setTimeout(() => t.style.display = 'none', 3000);
+    }
+
+    async function enviarLink(id, orderNum, phone) {
+      const link = document.getElementById('link-' + id)?.value || '';
+      const btn  = event.target;
+      btn.disabled = true;
+      btn.textContent = 'Enviando...';
+      try {
+        const r = await fetch('/admin/send-link', {
+          method: 'POST',
+          headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({ order_id: id, order_num: orderNum, phone, pass: PASS, tracking_link: link })
+        });
+        const d = await r.json();
+        if (d.ok) {
+          showToast('✅ Link enviado a ' + orderNum);
+          setTimeout(() => location.reload(), 1500);
+        } else {
+          showToast('❌ Error: ' + (d.error || 'intenta de nuevo'), '#ef4444');
+          btn.disabled = false; btn.textContent = '📍 Enviar Link';
+        }
+      } catch(e) {
+        showToast('❌ Sin conexión', '#ef4444');
+        btn.disabled = false; btn.textContent = '📍 Enviar Link';
+      }
+    }
+
+    async function marcarEntregado(id, orderNum, phone) {
+      if (!confirm('¿Confirmar entrega de ' + orderNum + '?')) return;
+      const btn = event.target;
+      btn.disabled = true;
+      btn.textContent = 'Marcando...';
+      try {
+        const r = await fetch('/admin/deliver', {
+          method: 'POST',
+          headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({ order_id: id, order_num: orderNum, phone, pass: PASS })
+        });
+        const d = await r.json();
+        if (d.ok) {
+          showToast('✅ Entregado: ' + orderNum);
+          setTimeout(() => location.reload(), 1500);
+        } else {
+          showToast('❌ Error: ' + (d.error || 'intenta de nuevo'), '#ef4444');
+          btn.disabled = false; btn.textContent = '✅ Marcar Entregado';
+        }
+      } catch(e) {
+        showToast('❌ Sin conexión', '#ef4444');
+        btn.disabled = false; btn.textContent = '✅ Marcar Entregado';
+      }
+    }
+
+    // Auto-refresh every 60 seconds
+    setTimeout(() => location.reload(), 60000);
+  </script>
+</body>
+</html>`);
+  } catch (err) {
+    console.error("Logistics error:", err);
+    res.send("<h2 style='color:red;font-family:sans-serif;padding:40px'>Error cargando órdenes</h2>");
+  }
+});
+
+// ============================================================
 // ADMIN ANALYTICS PAGE
 // ============================================================
 app.get("/admin/analytics", async (req, res) => {
@@ -2387,7 +2610,8 @@ app.get("/admin/analytics", async (req, res) => {
 // ============================================================
 app.post("/admin/send-link", async (req, res) => {
   const { order_id, order_num, phone, pass, tracking_link } = req.body;
-  if (pass !== (process.env.ADMIN_PASSWORD || "chefpapi2024")) {
+  const validPass = [process.env.ADMIN_PASSWORD || "chefpapi2024", process.env.LOGISTICS_PASSWORD || "delivery2024"];
+  if (!validPass.includes(pass)) {
     return res.status(403).json({ error: "No autorizado" });
   }
   try {
@@ -2409,7 +2633,8 @@ app.post("/admin/send-link", async (req, res) => {
 // ============================================================
 app.post("/admin/deliver", async (req, res) => {
   const { order_id, order_num, phone, pass } = req.body;
-  if (pass !== (process.env.ADMIN_PASSWORD || "chefpapi2024")) {
+  const validPass = [process.env.ADMIN_PASSWORD || "chefpapi2024", process.env.LOGISTICS_PASSWORD || "delivery2024"];
+  if (!validPass.includes(pass)) {
     return res.status(403).json({ error: "No autorizado" });
   }
   try {
