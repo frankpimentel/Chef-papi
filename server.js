@@ -1881,6 +1881,10 @@ app.get("/admin", async (req, res) => {
               ${actionBtn}
             </td>
             <td style="color:#999;font-size:12px">${timeOnly}</td>
+            <td style="font-size:11px">${o.alegra_invoice_number
+              ? `<a href="https://app.alegra.com/invoice/view/id/${o.alegra_invoice_id}" target="_blank"
+                   style="color:#f97316;text-decoration:none" title="Ver en Alegra">${o.alegra_invoice_number}</a>`
+              : `<span style="color:#444">—</span>`}</td>
             <td>
               <button onclick="deleteOrder(${o.id},'${orderNum}','${pass}')"
                 style="background:#ef4444;color:white;border:none;padding:4px 10px;border-radius:6px;font-size:11px;cursor:pointer">
@@ -2146,7 +2150,7 @@ app.get("/admin", async (req, res) => {
             <th><input type="checkbox" onchange="toggleAll(this)" style="cursor:pointer;width:15px;height:15px"/></th>
             <th>Orden</th><th>Cliente</th><th>Teléfono</th><th>Dirección</th>
             <th>Items</th><th>Pack</th><th>Total</th><th>Zona</th>
-            <th>Entrega</th><th>Estado / Acción</th><th>Hora</th><th></th>
+            <th>Entrega</th><th>Estado / Acción</th><th>Hora</th><th>Factura</th><th></th>
           </tr></thead>
           <tbody>${rows}</tbody>
         </table>`}`}
