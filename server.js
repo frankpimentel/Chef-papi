@@ -176,7 +176,8 @@ async function createAlegraInvoice(order) {
     console.log(`✅ Alegra invoice created: #${data.numberTemplate?.fullNumber || data.id}`);
 
     // Register CardNet payment immediately so invoice shows as Pagado
-    const totalAmount = (order.price || 0) + 120;
+    // order.total_price = full amount already including delivery (from Supabase orders table)
+    const totalAmount = order.total_price || ((order.price || 0) + 120);
     const payResp = await fetch(`${ALEGRA_BASE}/payments`, {
       method: "POST",
       headers: { "Content-Type": "application/json", "Authorization": `Basic ${auth}` },
