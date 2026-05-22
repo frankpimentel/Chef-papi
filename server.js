@@ -116,6 +116,7 @@ async function createAlegraInvoice(order) {
     // Resolve Alegra client
     // B01 (Crédito Fiscal): find or create company contact by RNC
     // B02 (Consumidor Final): use default Consumidor Final (id:1)
+    console.log(`Alegra client resolve — ncf_type: ${order.ncf_type}, rnc: ${order.rnc}, company: ${order.company_name}`);
     let clientPayload = { id: 1 }; // Consumidor Final (default)
     if (order.ncf_type === "B01" && order.rnc) {
       try {
