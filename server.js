@@ -168,13 +168,34 @@ async function createAlegraInvoice(order) {
     });
 
     const data = await resp.json();
-    if (data.id) {
-      console.log(`✅ Alegra invoice created: #${data.numberTemplate?.fullNumber || data.id}`);
-      return data;
-    } else {
+    if (!data.id) {
       console.error("Alegra invoice error:", JSON.stringify(data));
       return null;
     }
+
+    console.log(`✅ Alegra invoice created: #${data.numberTemplate?.fullNumber || data.id}`);
+
+    // Register CardNet payment immediately so invoice shows as Pagado
+    const totalAmount = (order.price || 0) + 120;
+    const payResp = await fetch(`${ALEGRA_BASE}/payments`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": `Basic ${auth}` },
+      body: JSON.stringify({
+        date: new Date().toISOString().split("T")[0],
+        invoices: [{ id: data.id, amount: totalAmount }],
+        bankAccount: { id: 4 }, // Tarjeta de crédito empresarial
+        paymentMethod: "debit-card",
+        observations: `CardNet — Pedido #${order.id}`,
+      }),
+    });
+    const payData = await payResp.json();
+    if (payData.id) {
+      console.log(`💳 Alegra payment registered: #${payData.id}`);
+    } else {
+      console.error("Alegra payment error:", JSON.stringify(payData));
+    }
+
+    return data;
   } catch (err) {
     console.error("Alegra createInvoice failed:", err.message);
     return null;
