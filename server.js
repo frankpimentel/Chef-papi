@@ -1892,14 +1892,7 @@ app.get("/admin", async (req, res) => {
     const rows = Object.entries(byDay).map(([day, dayOrders]) => {
       const dayRevenue = dayOrders.filter(o => ["paid","entregado"].includes(o.status)).reduce((s, o) => s + (o.total_price || 0), 0);
       const orderRows = dayOrders.map(o => {
-        const flavorCounts = (o.order_items || []).reduce((acc, i) => {
-          const key = i.flavor;
-          acc[key] = (acc[key] || 0) + 1;
-          return acc;
-        }, {});
-        const flavors = Object.entries(flavorCounts)
-          .map(([f, qty]) => `${FLAVORS[f]?.emoji || ""} ${FLAVORS[f]?.short || f}${qty > 1 ? ` x${qty}` : ""}`)
-          .join(" · ");
+        const flavors  = (o.order_items || []).map(i => `${FLAVORS[i.flavor]?.emoji || ""} ${FLAVORS[i.flavor]?.title || i.flavor}`).join(", ");
         const timeOnly = new Date(o.created_at).toLocaleTimeString("es-DO", { timeZone: "America/Santo_Domingo", hour: "2-digit", minute: "2-digit" });
         const orderNum = `CP-${String(o.id).padStart(5,"0")}`;
         const actionBtn = ["paid","sent"].includes(o.status) ? `
@@ -2179,8 +2172,7 @@ app.get("/admin", async (req, res) => {
           </tr></thead>
           <tbody>
             ${(hotTrafficOrders||[]).map(o => {
-              const flavorCounts2 = (o.order_items||[]).reduce((acc,i) => { acc[i.flavor]=(acc[i.flavor]||0)+1; return acc; }, {});
-              const flavors = Object.entries(flavorCounts2).map(([f,qty]) => `${FLAVORS[f]?.emoji||""} ${FLAVORS[f]?.short||f}${qty>1?` x${qty}`:""}`).join(" · ");
+              const flavors = (o.order_items||[]).map(i => `${FLAVORS[i.flavor]?.emoji||""} ${FLAVORS[i.flavor]?.title||i.flavor}`).join(", ");
               const orderNum = `CP-${String(o.id).padStart(5,"0")}`;
               const when = new Date(o.created_at).toLocaleString("es-DO", { timeZone:"America/Santo_Domingo", weekday:"short", month:"short", day:"numeric", hour:"2-digit", minute:"2-digit" });
               const waLink = `https://wa.me/${o.customers?.whatsapp_phone}?text=${encodeURIComponent(`¡Hola ${o.customers?.name||""}! 👋 Vi que casi completaste tu orden ${orderNum} en Chef Papi. ¿Te puedo ayudar a finalizarla? 🍗`)}`;
