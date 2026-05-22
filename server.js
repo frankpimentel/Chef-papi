@@ -151,6 +151,7 @@ async function createAlegraInvoice(order) {
       client: clientPayload,
       date: new Date().toISOString().split("T")[0],
       dueDate: new Date().toISOString().split("T")[0],
+      status: "open",
       items: lines,
       warehouse: { id: ALEGRA_WAREHOUSE },
       numberTemplate: { id: ncfTemplateId },
