@@ -2280,9 +2280,9 @@ app.get("/logistics", async (req, res) => {
         return acc;
       }, {});
       const flavorStr = Object.entries(flavors).map(([name, qty]) => `${qty}x ${name}`).join(" · ");
-      const waLink    = `https://wa.me/${phone}`;
       const isPaid    = o.status === "paid";
       const isEnCurso = o.status === "en_curso";
+      const displayPhone = phone ? phone.replace(/^1/, "") : "—";
 
       return `
       <div class="card" id="card-${o.id}">
@@ -2291,11 +2291,11 @@ app.get("/logistics", async (req, res) => {
           <span class="badge ${isPaid ? 'badge-paid' : 'badge-curso'}">${isPaid ? 'Pagado' : 'En camino'}</span>
         </div>
         <div class="customer">${o.customers?.name || "—"}</div>
+        <div class="phone">📞 ${displayPhone}</div>
         <div class="address">📍 ${o.delivery_address || "—"}</div>
         <div class="items">🍗 ${flavorStr}</div>
         <div class="total">RD$${(o.total_price || 0).toLocaleString()}</div>
         <div class="actions">
-          <a href="${waLink}" target="_blank" class="btn-wa">💬 WhatsApp</a>
           ${isPaid ? `
           <div class="link-row">
             <input id="link-${o.id}" type="url" placeholder="Link de tracking (opcional)" style="flex:1;padding:10px;border-radius:8px;border:1px solid #333;background:#1a1a1a;color:#eee;font-size:13px"/>
@@ -2331,13 +2331,13 @@ app.get("/logistics", async (req, res) => {
     .badge { padding: 3px 10px; border-radius: 20px; font-size: 12px; font-weight: bold; }
     .badge-paid  { background: #1e40af22; color: #60a5fa; border: 1px solid #1e40af; }
     .badge-curso { background: #78350f22; color: #fbbf24; border: 1px solid #78350f; }
-    .customer { font-size: 16px; font-weight: 600; margin-bottom: 6px; }
-    .address { color: #aaa; font-size: 13px; margin-bottom: 4px; }
-    .items { color: #f97316; font-size: 13px; margin-bottom: 4px; }
-    .total { color: #22c55e; font-size: 14px; font-weight: bold; margin-bottom: 14px; }
-    .actions { display: flex; flex-direction: column; gap: 8px; }
+    .customer { font-size: 16px; font-weight: 600; margin-bottom: 4px; }
+    .phone    { color: #60a5fa; font-size: 14px; margin-bottom: 4px; font-weight: 500; }
+    .address  { color: #aaa; font-size: 13px; margin-bottom: 4px; }
+    .items    { color: #f97316; font-size: 13px; margin-bottom: 4px; }
+    .total    { color: #22c55e; font-size: 14px; font-weight: bold; margin-bottom: 14px; }
+    .actions  { display: flex; flex-direction: column; gap: 8px; }
     .link-row { display: flex; gap: 8px; align-items: center; }
-    .btn-wa      { display: block; text-align: center; padding: 10px; border-radius: 8px; background: #25d36622; color: #25d366; border: 1px solid #25d366; font-size: 14px; font-weight: bold; text-decoration: none; }
     .btn-primary { padding: 10px 14px; border-radius: 8px; background: #3b82f6; color: white; border: none; font-size: 13px; font-weight: bold; cursor: pointer; white-space: nowrap; }
     .btn-primary:active { background: #2563eb; }
     .btn-success { padding: 12px; border-radius: 8px; background: #22c55e; color: white; border: none; font-size: 15px; font-weight: bold; cursor: pointer; width: 100%; }
