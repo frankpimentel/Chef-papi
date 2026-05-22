@@ -144,12 +144,16 @@ async function createAlegraInvoice(order) {
       }
     }
 
+    // B01 = Crédito Fiscal (empresa con RNC), B02 = Consumidor Final
+    const ncfTemplateId = order.customers?.rnc ? "1" : "2";
+
     const body = {
       client: clientPayload,
       date: new Date().toISOString().split("T")[0],
       dueDate: new Date().toISOString().split("T")[0],
       items: lines,
       warehouse: { id: ALEGRA_WAREHOUSE },
+      numberTemplate: { id: ncfTemplateId },
       observations: `Chef Papi WhatsApp — Pedido #${order.id} — ${order.delivery_address || ""}`,
     };
 
