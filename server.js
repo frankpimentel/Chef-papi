@@ -112,10 +112,36 @@ async function createAlegraInvoice(order) {
     // Add delivery line
     lines.push({ id: ALEGRA_ITEMS.delivery, price: 120, quantity: 1 });
 
-    // Build client payload — use generic consumer if no RNC/cedula
-    const clientPayload = order.customer_name
-      ? { name: order.customer_name, phonePrimary: order.phone }
-      : { name: "Consumidor Final" };
+    // Resolve Alegra client — create named client if they have RNC, else use Consumidor Final (id:1)
+    let clientPayload = { id: 1 }; // Consumidor Final (default)
+    if (order.customers?.rnc) {
+      // Try to find or create a client with their RNC
+      try {
+        const searchResp = await fetch(
+          `${ALEGRA_BASE}/contacts?metadata=true&name=${encodeURIComponent(order.customers.name || "")}&limit=1`,
+          { headers: { "Authorization": `Basic ${auth}` } }
+        );
+        const searchData = await searchResp.json();
+        if (searchData?.[0]?.id) {
+          clientPayload = { id: searchData[0].id };
+        } else {
+          const createResp = await fetch(`${ALEGRA_BASE}/contacts`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "Authorization": `Basic ${auth}` },
+            body: JSON.stringify({
+              name: order.customers.name || "Cliente",
+              identification: order.customers.rnc,
+              phonePrimary: order.phone,
+              type: ["client"],
+            }),
+          });
+          const created = await createResp.json();
+          if (created?.id) clientPayload = { id: created.id };
+        }
+      } catch (e) {
+        console.error("Alegra client lookup failed, using Consumidor Final:", e.message);
+      }
+    }
 
     const body = {
       client: clientPayload,
