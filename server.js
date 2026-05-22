@@ -80,10 +80,11 @@ const PRICES = { 3: 870, 5: 1450, 8: 2320 };
 const UNIT_PRICE = 290;
 
 // ── ALEGRA ───────────────────────────────────────────────────
-const ALEGRA_EMAIL = process.env.ALEGRA_EMAIL || "frank@integra-foods.com";
-const ALEGRA_TOKEN = process.env.ALEGRA_TOKEN;
-const ALEGRA_BASE  = "https://api.alegra.com/api/v1";
-const ALEGRA_PRICE_LIST = "019e50d3-d39c-7496-9f18-7542526ed90f";
+const ALEGRA_EMAIL     = process.env.ALEGRA_EMAIL || "frank@integra-foods.com";
+const ALEGRA_TOKEN     = process.env.ALEGRA_TOKEN;
+const ALEGRA_BASE      = "https://api.alegra.com/api/v1";
+const ALEGRA_PRICE_LIST  = "019e50d3-d39c-7496-9f18-7542526ed90f";
+const ALEGRA_WAREHOUSE   = "019e516a-8285-767a-88b8-07911a1aca2e"; // Chef Papi almacén
 const ALEGRA_ITEMS = {
   natural:  1,  // Chef Papi - Salt & Pepper
   pomodoro: 2,  // Chef Papi - Marinara
@@ -148,6 +149,7 @@ async function createAlegraInvoice(order) {
       date: new Date().toISOString().split("T")[0],
       dueDate: new Date().toISOString().split("T")[0],
       items: lines,
+      warehouse: { id: ALEGRA_WAREHOUSE },
       observations: `Chef Papi WhatsApp — Pedido #${order.id} — ${order.delivery_address || ""}`,
     };
 
