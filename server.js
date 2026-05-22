@@ -143,6 +143,7 @@ async function createAlegraInvoice(order) {
           const contactBody = {
             name:           order.company_name || "Empresa",
             identification: order.rnc,
+            identificationObject: { type: "RNC", number: order.rnc },
             type:           "client",
           };
           console.log(`Creating Alegra contact:`, JSON.stringify(contactBody));
