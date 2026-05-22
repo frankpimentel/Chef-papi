@@ -79,6 +79,75 @@ const NUTRITION = {
 const PRICES = { 3: 870, 5: 1450, 8: 2320 };
 const UNIT_PRICE = 290;
 
+// ── ALEGRA ───────────────────────────────────────────────────
+const ALEGRA_EMAIL = process.env.ALEGRA_EMAIL || "frank@integra-foods.com";
+const ALEGRA_TOKEN = process.env.ALEGRA_TOKEN;
+const ALEGRA_BASE  = "https://api.alegra.com/api/v1";
+const ALEGRA_PRICE_LIST = "019e50d3-d39c-7496-9f18-7542526ed90f";
+const ALEGRA_ITEMS = {
+  natural:  1,  // Chef Papi - Salt & Pepper
+  pomodoro: 2,  // Chef Papi - Marinara
+  pesto:    3,  // Chef Papi - Pesto de Albahaca
+  bbq:      4,  // Chef Papi - BBQ Glaze
+  delivery: 5,  // Delivery
+};
+
+async function createAlegraInvoice(order) {
+  if (!ALEGRA_TOKEN) return null;
+  try {
+    const auth = Buffer.from(`${ALEGRA_EMAIL}:${ALEGRA_TOKEN}`).toString("base64");
+
+    // Group order items by flavor and count
+    const flavorCounts = {};
+    for (const item of (order.order_items || [])) {
+      flavorCounts[item.flavor] = (flavorCounts[item.flavor] || 0) + 1;
+    }
+
+    const lines = Object.entries(flavorCounts).map(([flavor, qty]) => ({
+      id: ALEGRA_ITEMS[flavor],
+      price: UNIT_PRICE,
+      quantity: qty,
+    }));
+
+    // Add delivery line
+    lines.push({ id: ALEGRA_ITEMS.delivery, price: 120, quantity: 1 });
+
+    // Build client payload — use generic consumer if no RNC/cedula
+    const clientPayload = order.customer_name
+      ? { name: order.customer_name, phonePrimary: order.phone }
+      : { name: "Consumidor Final" };
+
+    const body = {
+      client: clientPayload,
+      date: new Date().toISOString().split("T")[0],
+      dueDate: new Date().toISOString().split("T")[0],
+      items: lines,
+      observations: `Chef Papi WhatsApp — Pedido #${order.id} — ${order.delivery_address || ""}`,
+    };
+
+    const resp = await fetch(`${ALEGRA_BASE}/invoices`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Basic ${auth}`,
+      },
+      body: JSON.stringify(body),
+    });
+
+    const data = await resp.json();
+    if (data.id) {
+      console.log(`✅ Alegra invoice created: #${data.numberTemplate?.fullNumber || data.id}`);
+      return data;
+    } else {
+      console.error("Alegra invoice error:", JSON.stringify(data));
+      return null;
+    }
+  } catch (err) {
+    console.error("Alegra createInvoice failed:", err.message);
+    return null;
+  }
+}
+
 // ── CATALOG ──────────────────────────────────────────────────
 const CATALOG_ID = "956996010479028";
 const CATALOG_PRODUCT_MAP = {
@@ -1212,6 +1281,15 @@ app.post("/payment-confirm", async (req, res) => {
 
     await updateSession(phone, { state: "DONE", pending_order: null });
     await sendDoneButtons(phone);
+
+    // Create Alegra invoice automatically
+    const alegraOrder = { ...order, phone, order_items: order.order_items };
+    const alegraInvoice = await createAlegraInvoice(alegraOrder);
+    if (alegraInvoice) {
+      const invoiceNum = alegraInvoice.numberTemplate?.fullNumber || `#${alegraInvoice.id}`;
+      await supabase.from("orders").update({ alegra_invoice_id: String(alegraInvoice.id), alegra_invoice_number: invoiceNum }).eq("id", order_id);
+      console.log(`📄 Alegra invoice ${invoiceNum} saved to order ${order_id}`);
+    }
 
     // Notify MBE via Google Sheets
     console.log("Calling notifyMBE for order:", orderNum);
