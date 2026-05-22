@@ -2271,45 +2271,52 @@ app.get("/logistics", async (req, res) => {
       .lt("created_at", endOfDay.toISOString())
       .order("created_at", { ascending: true });
 
-    const cards = (orders || []).map(o => {
-      const orderNum = `CP-${String(o.id).padStart(5, "0")}`;
-      const phone    = o.customers?.whatsapp_phone || "";
-      const flavors  = (o.order_items || []).reduce((acc, i) => {
-        const f = FLAVORS[i.flavor];
-        acc[f?.short || i.flavor] = (acc[f?.short || i.flavor] || 0) + 1;
-        return acc;
-      }, {});
-      const flavorStr = Object.entries(flavors).map(([name, qty]) => `${qty}x ${name}`).join(" · ");
-      const isPaid    = o.status === "paid";
-      const isEnCurso = o.status === "en_curso";
+    const rows = (orders || []).map(o => {
+      const orderNum     = `CP-${String(o.id).padStart(5, "0")}`;
+      const phone        = o.customers?.whatsapp_phone || "";
       const displayPhone = phone ? phone.replace(/^1/, "") : "—";
+      const flavors      = (o.order_items || []).map(i => `${FLAVORS[i.flavor]?.emoji || ""} ${FLAVORS[i.flavor]?.title || i.flavor}`).join(", ");
+      const isPaid       = o.status === "paid";
+      const isEnCurso    = o.status === "en_curso";
+      const sdTime       = new Date(o.created_at);
+      const timeOnly     = sdTime.toLocaleTimeString("es-DO", { hour: "2-digit", minute: "2-digit", timeZone: "America/Santo_Domingo" });
 
-      return `
-      <div class="card" id="card-${o.id}">
-        <div class="card-header">
-          <span class="order-num">${orderNum}</span>
-          <span class="badge ${isPaid ? 'badge-paid' : 'badge-curso'}">${isPaid ? 'Pagado' : 'En camino'}</span>
-        </div>
-        <div class="customer">${o.customers?.name || "—"}</div>
-        <div class="phone">📞 ${displayPhone}</div>
-        <div class="address">📍 ${o.delivery_address || "—"}</div>
-        <div class="items">🍗 ${flavorStr}</div>
-        <div class="total">RD$${(o.total_price || 0).toLocaleString()}</div>
-        <div class="actions">
-          ${isPaid ? `
-          <div class="link-row">
-            <input id="link-${o.id}" type="url" placeholder="Link de tracking (opcional)" style="flex:1;padding:10px;border-radius:8px;border:1px solid #333;background:#1a1a1a;color:#eee;font-size:13px"/>
-            <button class="btn-primary" onclick="enviarLink(${o.id},'${orderNum}','${phone}')">📍 Enviar Link</button>
-          </div>` : ""}
-          ${isEnCurso ? `
-          <button class="btn-success" onclick="marcarEntregado(${o.id},'${orderNum}','${phone}')">✅ Marcar Entregado</button>
-          ` : ""}
-        </div>
-      </div>`;
+      const actionBtn = isPaid ? `
+        <div style="margin-top:6px;display:flex;gap:6px;align-items:center">
+          <input id="link-${o.id}" type="url" placeholder="Tracking link (opcional)"
+            style="padding:5px 8px;border-radius:6px;border:none;background:#333;color:#eee;font-size:11px;width:170px"/>
+          <button onclick="enviarLink(${o.id},'${orderNum}','${phone}')"
+            style="background:#3b82f6;color:white;border:none;padding:5px 10px;border-radius:6px;font-size:11px;cursor:pointer;white-space:nowrap">
+            📍 Enviar Link
+          </button>
+        </div>` : isEnCurso ? `
+        <div style="margin-top:6px">
+          <button onclick="marcarEntregado(${o.id},'${orderNum}','${phone}')"
+            style="background:#22c55e;color:white;border:none;padding:5px 14px;border-radius:6px;font-size:11px;cursor:pointer;white-space:nowrap">
+            ✅ Marcar Entregado
+          </button>
+        </div>` : "";
+
+      return `<tr id="row-${o.id}" style="border-bottom:1px solid #2a2a2a">
+        <td style="font-weight:bold">${orderNum}</td>
+        <td>${o.customers?.name || "—"}</td>
+        <td>${displayPhone}</td>
+        <td>${o.delivery_address || "—"}</td>
+        <td>${flavors || "—"}</td>
+        <td>${o.pack_size}</td>
+        <td>RD$${(o.total_price || 0).toLocaleString()}</td>
+        <td>${o.delivery_zone || "—"}</td>
+        <td>${o.estimated_delivery || "—"}</td>
+        <td>
+          <span style="background:${isPaid ? "#3b82f6" : "#f59e0b"};color:white;padding:3px 10px;border-radius:20px;font-size:12px">${isPaid ? "pagado" : "en_curso"}</span>
+          ${actionBtn}
+        </td>
+        <td style="color:#999;font-size:12px">${timeOnly}</td>
+      </tr>`;
     }).join("");
 
     const emptyState = (orders || []).length === 0
-      ? `<div style="text-align:center;color:#555;padding:60px 20px;font-size:18px">🎉 No hay órdenes pendientes por ahora</div>`
+      ? `<tr><td colspan="11" style="text-align:center;color:#555;padding:60px 20px;font-size:16px">🎉 No hay órdenes activas por ahora</td></tr>`
       : "";
 
     res.send(`<!DOCTYPE html>
@@ -2320,43 +2327,38 @@ app.get("/logistics", async (req, res) => {
   <title>Chef Papi — Logistics</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: -apple-system, sans-serif; background: #111; color: #eee; padding: 16px; min-height: 100vh; }
-    .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; padding-bottom: 16px; border-bottom: 1px solid #222; }
-    .header h1 { color: #f97316; font-size: 20px; }
-    .header .count { background: #f97316; color: white; padding: 4px 12px; border-radius: 20px; font-size: 13px; font-weight: bold; }
-    .refresh { color: #888; font-size: 13px; cursor: pointer; text-decoration: underline; }
-    .card { background: #1a1a1a; border-radius: 14px; padding: 16px; margin-bottom: 14px; border-left: 4px solid #f97316; }
-    .card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
-    .order-num { font-weight: bold; font-size: 16px; color: #f97316; }
-    .badge { padding: 3px 10px; border-radius: 20px; font-size: 12px; font-weight: bold; }
-    .badge-paid  { background: #1e40af22; color: #60a5fa; border: 1px solid #1e40af; }
-    .badge-curso { background: #78350f22; color: #fbbf24; border: 1px solid #78350f; }
-    .customer { font-size: 16px; font-weight: 600; margin-bottom: 4px; }
-    .phone    { color: #60a5fa; font-size: 14px; margin-bottom: 4px; font-weight: 500; }
-    .address  { color: #aaa; font-size: 13px; margin-bottom: 4px; }
-    .items    { color: #f97316; font-size: 13px; margin-bottom: 4px; }
-    .total    { color: #22c55e; font-size: 14px; font-weight: bold; margin-bottom: 14px; }
-    .actions  { display: flex; flex-direction: column; gap: 8px; }
-    .link-row { display: flex; gap: 8px; align-items: center; }
-    .btn-primary { padding: 10px 14px; border-radius: 8px; background: #3b82f6; color: white; border: none; font-size: 13px; font-weight: bold; cursor: pointer; white-space: nowrap; }
-    .btn-primary:active { background: #2563eb; }
-    .btn-success { padding: 12px; border-radius: 8px; background: #22c55e; color: white; border: none; font-size: 15px; font-weight: bold; cursor: pointer; width: 100%; }
-    .btn-success:active { background: #16a34a; }
+    body { font-family: -apple-system, sans-serif; background: #111; color: #eee; padding: 24px; min-height: 100vh; }
+    h1 { color: #f97316; font-size: 22px; margin-bottom: 4px; }
+    .meta { color: #888; font-size: 13px; margin-bottom: 24px; }
+    .topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+    .refresh { color: #f97316; font-size: 13px; cursor: pointer; border: 1px solid #f97316; padding: 6px 14px; border-radius: 8px; background: none; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    thead th { color: #f97316; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; padding: 10px 12px; text-align: left; border-bottom: 2px solid #2a2a2a; white-space: nowrap; }
+    tbody td { padding: 12px; vertical-align: top; }
+    tbody tr:hover { background: #1a1a1a; }
     .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
              background: #22c55e; color: white; padding: 12px 24px; border-radius: 10px;
-             font-weight: bold; display: none; z-index: 999; }
+             font-weight: bold; display: none; z-index: 999; font-size: 14px; }
   </style>
 </head>
 <body>
-  <div class="header">
-    <h1>🛵 Logistics</h1>
-    <div style="display:flex;align-items:center;gap:10px">
-      <span class="count">${(orders || []).length} orden${(orders || []).length !== 1 ? "es" : ""}</span>
-      <span class="refresh" onclick="location.reload()">↻ Actualizar</span>
+  <div class="topbar">
+    <div>
+      <h1>🛵 Chef Papi — Logistics</h1>
+      <div class="meta">${(orders || []).length} orden${(orders || []).length !== 1 ? "es" : ""} activas hoy · Se actualiza cada 60 seg</div>
     </div>
+    <button class="refresh" onclick="location.reload()">↻ Actualizar</button>
   </div>
-  ${emptyState}
-  ${cards}
+  <div style="overflow-x:auto">
+    <table>
+      <thead><tr>
+        <th>Orden</th><th>Cliente</th><th>Teléfono</th><th>Dirección</th>
+        <th>Items</th><th>Pack</th><th>Total</th><th>Zona</th>
+        <th>Entrega</th><th>Estado / Acción</th><th>Hora</th>
+      </tr></thead>
+      <tbody>${rows}${emptyState}</tbody>
+    </table>
+  </div>
   <div class="toast" id="toast"></div>
 
   <script>
