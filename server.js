@@ -1269,27 +1269,33 @@ app.post("/payment-confirm", async (req, res) => {
       deliveryLine = `\n⏱️ Tiempo estimado: ${order.estimated_delivery}`;
     }
 
+    // Create Alegra invoice FIRST so we can include the number in the WhatsApp message
+    const alegraOrder = { ...order, phone, order_items: order.order_items };
+    const alegraInvoice = await createAlegraInvoice(alegraOrder);
+    let invoiceNum = null;
+    if (alegraInvoice) {
+      invoiceNum = alegraInvoice.numberTemplate?.fullNumber || `#${alegraInvoice.id}`;
+      await supabase.from("orders").update({ alegra_invoice_id: String(alegraInvoice.id), alegra_invoice_number: invoiceNum }).eq("id", order_id);
+      console.log(`📄 Alegra invoice ${invoiceNum} saved to order ${order_id}`);
+    }
+
+    const invoiceLine = invoiceNum
+      ? `\n\n📄 *Comprobante fiscal:* ${invoiceNum}`
+      : "";
+
     await sendMessage(phone,
       `✅ *¡Pagó y todo!* Gracias ${order.customers.name} 🙌\n\n` +
       `📋 *${orderNum}*\n${summary}\n\n` +
       `🔥 Tu pollo está siendo preparado con amor.\n` +
       `Te avisamos cuando esté en camino 🛵` +
-      `${deliveryLine}\n\n` +
+      `${deliveryLine}` +
+      `${invoiceLine}\n\n` +
       `⚠️ _Al calentar, pasa el pollo a un plato primero._\n\n` +
       `Buen provecho y gracias por elegir Chef Papi 👨‍🍳🍗`
     );
 
     await updateSession(phone, { state: "DONE", pending_order: null });
     await sendDoneButtons(phone);
-
-    // Create Alegra invoice automatically
-    const alegraOrder = { ...order, phone, order_items: order.order_items };
-    const alegraInvoice = await createAlegraInvoice(alegraOrder);
-    if (alegraInvoice) {
-      const invoiceNum = alegraInvoice.numberTemplate?.fullNumber || `#${alegraInvoice.id}`;
-      await supabase.from("orders").update({ alegra_invoice_id: String(alegraInvoice.id), alegra_invoice_number: invoiceNum }).eq("id", order_id);
-      console.log(`📄 Alegra invoice ${invoiceNum} saved to order ${order_id}`);
-    }
 
     // Notify MBE via Google Sheets
     console.log("Calling notifyMBE for order:", orderNum);
