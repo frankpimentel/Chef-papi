@@ -120,33 +120,60 @@ async function createAlegraInvoice(order) {
     let clientPayload = { id: 1 }; // Consumidor Final (default)
     if (order.ncf_type === "B01" && order.rnc) {
       try {
-        // Search by RNC/identification
+        // 1. Search by RNC/identification — prevents duplicate contacts
         const searchResp = await fetch(
           `${ALEGRA_BASE}/contacts?identification=${encodeURIComponent(order.rnc)}&limit=1`,
           { headers: { "Authorization": `Basic ${auth}` } }
         );
-        const searchData = await searchResp.json();
-        if (Array.isArray(searchData) && searchData[0]?.id) {
-          clientPayload = { id: searchData[0].id };
-          console.log(`Alegra client found by RNC: ${searchData[0].id} — ${searchData[0].name}`);
+        const searchRaw = await searchResp.text();
+        console.log(`Alegra contact search (RNC ${order.rnc}) status:${searchResp.status} body:${searchRaw}`);
+        let searchData;
+        try { searchData = JSON.parse(searchRaw); } catch { searchData = []; }
+
+        // Alegra returns array of contacts OR {errors:[...]}
+        const existingContact = Array.isArray(searchData)
+          ? searchData.find(c => c.identification === order.rnc || c.id)
+          : null;
+
+        if (existingContact?.id) {
+          clientPayload = { id: existingContact.id };
+          console.log(`✅ Alegra client found: id=${existingContact.id} — ${existingContact.name}`);
         } else {
-          // Create new company contact
+          // 2. Not found — create new company contact (no phone to avoid format errors)
+          const contactBody = {
+            name:           order.company_name || "Empresa",
+            identification: order.rnc,
+            type:           ["client"],
+          };
+          console.log(`Creating Alegra contact:`, JSON.stringify(contactBody));
           const createResp = await fetch(`${ALEGRA_BASE}/contacts`, {
             method: "POST",
             headers: { "Content-Type": "application/json", "Authorization": `Basic ${auth}` },
-            body: JSON.stringify({
-              name:           order.company_name || order.customers?.name || "Empresa",
-              identification: order.rnc,
-              phonePrimary:   order.phone,
-              type:           ["client"],
-            }),
+            body: JSON.stringify(contactBody),
           });
-          const created = await createResp.json();
+          const createRaw = await createResp.text();
+          console.log(`Alegra contact create status:${createResp.status} body:${createRaw}`);
+          let created;
+          try { created = JSON.parse(createRaw); } catch { created = {}; }
+
           if (created?.id) {
             clientPayload = { id: created.id };
-            console.log(`Alegra client created: ${created.id} — ${created.name} (RNC: ${order.rnc})`);
+            console.log(`✅ Alegra client created: id=${created.id} — ${created.name} (RNC: ${order.rnc})`);
           } else {
-            console.error("Alegra client creation failed:", JSON.stringify(created));
+            // 3. Creation failed — try searching again in case it was a duplicate RNC conflict
+            console.error("Alegra contact creation failed, retrying search:", createRaw);
+            const retryResp = await fetch(
+              `${ALEGRA_BASE}/contacts?identification=${encodeURIComponent(order.rnc)}&limit=1`,
+              { headers: { "Authorization": `Basic ${auth}` } }
+            );
+            const retryData = await retryResp.json().catch(() => []);
+            const retryContact = Array.isArray(retryData) ? retryData[0] : null;
+            if (retryContact?.id) {
+              clientPayload = { id: retryContact.id };
+              console.log(`✅ Alegra client found on retry: id=${retryContact.id} — ${retryContact.name}`);
+            } else {
+              console.error("Alegra client not found after retry — using Consumidor Final");
+            }
           }
         }
       } catch (e) {
