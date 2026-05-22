@@ -145,7 +145,8 @@ async function createAlegraInvoice(order) {
     }
 
     // B01 = Crédito Fiscal (empresa con RNC), B02 = Consumidor Final
-    const ncfTemplateId = order.customers?.rnc ? "1" : "2";
+    // Use ncf_type saved on the order (what the customer actually selected)
+    const ncfTemplateId = order.ncf_type === "B01" ? "1" : "2";
 
     const body = {
       client: clientPayload,
@@ -1250,6 +1251,7 @@ async function createOrderAndCharge(phone, session, address) {
       delivery_address:   address,
       delivery_zone:      order.delivery_zone || null,
       estimated_delivery: order.estimated_delivery || null,
+      ncf_type:           order.ncf_type || "B02",
     })
     .select()
     .single();
@@ -1348,8 +1350,9 @@ app.post("/payment-confirm", async (req, res) => {
       console.log(`📄 Alegra invoice ${invoiceNum} saved to order ${order_id}`);
     }
 
+    const isB01 = order.ncf_type === "B01";
     const invoiceLine = invoiceNum
-      ? `\n\n📄 *Comprobante fiscal:* ${invoiceNum}`
+      ? `\n\n📄 *${isB01 ? "Comprobante fiscal" : "Factura"}:* ${invoiceNum}`
       : "";
 
     await sendMessage(phone,
