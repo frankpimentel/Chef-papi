@@ -223,7 +223,7 @@ async function createAlegraInvoice(order) {
       body: JSON.stringify({
         date: new Date().toISOString().split("T")[0],
         invoices: [{ id: data.id, amount: totalAmount }],
-        bankAccount: { id: 4 }, // Tarjeta de crédito empresarial
+        bankAccount: { id: 3 }, // Chef Papi - CardNet
         paymentMethod: "debit-card",
         observations: `CardNet — Pedido #${order.id}`,
       }),
