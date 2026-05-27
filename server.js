@@ -2335,25 +2335,29 @@ app.get("/logistics", async (req, res) => {
     const startOfDay = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate(), 4, 0, 0)); // midnight SD = 04:00 UTC
     const endOfDay   = new Date(startOfDay.getTime() + 24 * 60 * 60 * 1000);
 
-    const { data: orders } = await supabase
+    const { data: allOrders } = await supabase
       .from("orders")
       .select("*, customers(*), order_items(*)")
-      .in("status", ["paid", "en_curso"])
+      .in("status", ["paid", "en_curso", "entregado"])
       .gte("created_at", startOfDay.toISOString())
       .lt("created_at", endOfDay.toISOString())
       .order("created_at", { ascending: true });
 
-    const rows = (orders || []).map(o => {
+    const orders     = (allOrders || []).filter(o => ["paid","en_curso"].includes(o.status));
+    const delivered  = (allOrders || []).filter(o => o.status === "entregado");
+
+    function buildRow(o, isArchive = false) {
       const orderNum     = `CP-${String(o.id).padStart(5, "0")}`;
       const phone        = o.customers?.whatsapp_phone || "";
       const displayPhone = phone ? phone.replace(/^1/, "") : "—";
       const flavors      = (o.order_items || []).map(i => `${FLAVORS[i.flavor]?.emoji || ""} ${FLAVORS[i.flavor]?.title || i.flavor}`).join(", ");
       const isPaid       = o.status === "paid";
       const isEnCurso    = o.status === "en_curso";
-      const sdTime       = new Date(o.created_at);
-      const timeOnly     = sdTime.toLocaleTimeString("es-DO", { hour: "2-digit", minute: "2-digit", timeZone: "America/Santo_Domingo" });
+      const isEntregado  = o.status === "entregado";
+      const timeOnly     = new Date(o.created_at).toLocaleTimeString("es-DO", { hour: "2-digit", minute: "2-digit", timeZone: "America/Santo_Domingo" });
+      const printData    = JSON.stringify({ orderNum, name: o.customers?.name||"—", phone: displayPhone, address: o.delivery_address||"—", flavors, pack: o.pack_size, total: o.total_price||0, zone: o.delivery_zone||"—", est: o.estimated_delivery||"—", time: timeOnly }).replace(/'/g,"&#39;");
 
-      const actionBtn = isPaid ? `
+      const actionBtn = isArchive ? "" : isPaid ? `
         <div style="margin-top:6px;display:flex;gap:6px;align-items:center">
           <input id="link-${o.id}" type="url" placeholder="Tracking link (opcional)"
             style="padding:5px 8px;border-radius:6px;border:none;background:#333;color:#eee;font-size:11px;width:170px"/>
@@ -2369,6 +2373,10 @@ app.get("/logistics", async (req, res) => {
           </button>
         </div>` : "";
 
+      const statusBadge = isEntregado
+        ? `<span style="background:#16a34a;color:white;padding:3px 10px;border-radius:20px;font-size:12px">✅ entregado</span>`
+        : `<span style="background:${isPaid ? "#3b82f6" : "#f59e0b"};color:white;padding:3px 10px;border-radius:20px;font-size:12px">${isPaid ? "pagado" : "en_curso"}</span>`;
+
       return `<tr id="row-${o.id}" style="border-bottom:1px solid #2a2a2a">
         <td style="font-weight:bold">${orderNum}</td>
         <td>${o.customers?.name || "—"}</td>
@@ -2379,16 +2387,20 @@ app.get("/logistics", async (req, res) => {
         <td>RD$${(o.total_price || 0).toLocaleString()}</td>
         <td>${o.delivery_zone || "—"}</td>
         <td>${o.estimated_delivery || "—"}</td>
-        <td>
-          <span style="background:${isPaid ? "#3b82f6" : "#f59e0b"};color:white;padding:3px 10px;border-radius:20px;font-size:12px">${isPaid ? "pagado" : "en_curso"}</span>
-          ${actionBtn}
-        </td>
+        <td>${statusBadge}${actionBtn}</td>
         <td style="color:#999;font-size:12px">${timeOnly}</td>
+        <td><button onclick="printOrder('${printData}')" style="background:#374151;color:white;border:none;padding:5px 10px;border-radius:6px;font-size:12px;cursor:pointer">🖨️</button></td>
       </tr>`;
-    }).join("");
+    }
 
-    const emptyState = (orders || []).length === 0
-      ? `<tr><td colspan="11" style="text-align:center;color:#555;padding:60px 20px;font-size:16px">🎉 No hay órdenes activas por ahora</td></tr>`
+    const rows          = orders.map(o => buildRow(o, false)).join("");
+    const archivedRows  = delivered.map(o => buildRow(o, true)).join("");
+
+    const emptyState = orders.length === 0
+      ? `<tr><td colspan="12" style="text-align:center;color:#555;padding:60px 20px;font-size:16px">🎉 No hay órdenes activas por ahora</td></tr>`
+      : "";
+    const emptyArchive = delivered.length === 0
+      ? `<tr><td colspan="12" style="text-align:center;color:#555;padding:40px 20px;font-size:14px">Sin entregas aún hoy</td></tr>`
       : "";
 
     res.send(`<!DOCTYPE html>
@@ -2411,30 +2423,102 @@ app.get("/logistics", async (req, res) => {
     .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
              background: #22c55e; color: white; padding: 12px 24px; border-radius: 10px;
              font-weight: bold; display: none; z-index: 999; font-size: 14px; }
+    .tabs { display: flex; gap: 8px; margin-bottom: 20px; }
+    .tab { padding: 8px 20px; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: bold; border: none; }
+    .tab.active { background: #f97316; color: white; }
+    .tab.inactive { background: #222; color: #888; }
+    .section { display: none; }
+    .section.visible { display: block; }
+    .archive-header { color: #16a34a; font-size: 16px; font-weight: bold; margin: 8px 0 12px; }
+    @media print {
+      body { background: white; color: black; padding: 0; }
+      .no-print { display: none !important; }
+    }
   </style>
 </head>
 <body>
-  <div class="topbar">
+  <div class="topbar no-print">
     <div>
       <h1>🛵 Chef Papi — Logistics</h1>
-      <div class="meta">${(orders || []).length} orden${(orders || []).length !== 1 ? "es" : ""} activas hoy · Se actualiza cada 60 seg</div>
+      <div class="meta">${orders.length} orden${orders.length !== 1 ? "es" : ""} activas · ${delivered.length} entregadas hoy · Se actualiza cada 60 seg</div>
     </div>
     <button class="refresh" onclick="location.reload()">↻ Actualizar</button>
   </div>
-  <div style="overflow-x:auto">
-    <table>
-      <thead><tr>
-        <th>Orden</th><th>Cliente</th><th>Teléfono</th><th>Dirección</th>
-        <th>Items</th><th>Pack</th><th>Total</th><th>Zona</th>
-        <th>Entrega</th><th>Estado / Acción</th><th>Hora</th>
-      </tr></thead>
-      <tbody>${rows}${emptyState}</tbody>
-    </table>
+
+  <div class="tabs no-print">
+    <button class="tab active" onclick="showTab('activas')">📦 Activas (${orders.length})</button>
+    <button class="tab inactive" onclick="showTab('archivadas')">✅ Archivadas (${delivered.length})</button>
   </div>
+
+  <div id="activas" class="section visible">
+    <div style="overflow-x:auto">
+      <table>
+        <thead><tr>
+          <th>Orden</th><th>Cliente</th><th>Teléfono</th><th>Dirección</th>
+          <th>Items</th><th>Pack</th><th>Total</th><th>Zona</th>
+          <th>Entrega</th><th>Estado / Acción</th><th>Hora</th><th class="no-print">🖨️</th>
+        </tr></thead>
+        <tbody>${rows}${emptyState}</tbody>
+      </table>
+    </div>
+  </div>
+
+  <div id="archivadas" class="section">
+    <div class="archive-header">✅ Órdenes entregadas hoy</div>
+    <div style="overflow-x:auto">
+      <table>
+        <thead><tr>
+          <th>Orden</th><th>Cliente</th><th>Teléfono</th><th>Dirección</th>
+          <th>Items</th><th>Pack</th><th>Total</th><th>Zona</th>
+          <th>Entrega</th><th>Estado</th><th>Hora</th><th class="no-print">🖨️</th>
+        </tr></thead>
+        <tbody>${archivedRows}${emptyArchive}</tbody>
+      </table>
+    </div>
+  </div>
+
   <div class="toast" id="toast"></div>
 
   <script>
     const PASS = ${JSON.stringify(pass)};
+
+    function showTab(tab) {
+      document.getElementById('activas').classList.toggle('visible', tab === 'activas');
+      document.getElementById('archivadas').classList.toggle('visible', tab === 'archivadas');
+      document.querySelectorAll('.tab').forEach((t,i) => {
+        t.className = 'tab ' + ((i===0 && tab==='activas') || (i===1 && tab==='archivadas') ? 'active' : 'inactive');
+      });
+    }
+
+    function printOrder(dataStr) {
+      const d = JSON.parse(dataStr.replace(/&#39;/g,"'"));
+      const w = window.open('', '_blank', 'width=420,height=600');
+      w.document.write(\`<!DOCTYPE html><html><head><meta charset="utf-8"/>
+        <title>Orden \${d.orderNum}</title>
+        <style>
+          body{font-family:Arial,sans-serif;padding:24px;font-size:14px;color:#000}
+          h2{margin-bottom:16px;font-size:18px}
+          .row{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #eee}
+          .label{color:#666;font-size:12px}
+          .val{font-weight:bold;text-align:right}
+          .items{background:#f9f9f9;padding:10px;border-radius:6px;margin:12px 0}
+          .footer{margin-top:16px;font-size:11px;color:#999;text-align:center}
+        </style>
+      </head><body>
+        <h2>🍗 Chef Papi — \${d.orderNum}</h2>
+        <div class="row"><span class="label">Cliente</span><span class="val">\${d.name}</span></div>
+        <div class="row"><span class="label">Teléfono</span><span class="val">\${d.phone}</span></div>
+        <div class="row"><span class="label">Dirección</span><span class="val" style="max-width:220px;text-align:right">\${d.address}</span></div>
+        <div class="row"><span class="label">Zona</span><span class="val">\${d.zone}</span></div>
+        <div class="row"><span class="label">Hora</span><span class="val">\${d.time}</span></div>
+        <div class="row"><span class="label">Entrega estimada</span><span class="val">\${d.est}</span></div>
+        <div class="items"><strong>Items (Pack \${d.pack}):</strong><br/>\${d.flavors}</div>
+        <div class="row"><span class="label">Total</span><span class="val">RD$\${d.total.toLocaleString()}</span></div>
+        <div class="footer">Chef Papi · integra-foods.com · 809-883-1687</div>
+        <script>window.onload=()=>{window.print();window.close();}<\/script>
+      </body></html>\`);
+      w.document.close();
+    }
 
     function showToast(msg, color='#22c55e') {
       const t = document.getElementById('toast');
