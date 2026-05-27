@@ -2493,31 +2493,29 @@ app.get("/logistics", async (req, res) => {
     function printOrder(dataStr) {
       const d = JSON.parse(dataStr.replace(/&#39;/g,"'"));
       const w = window.open('', '_blank', 'width=420,height=600');
-      w.document.write(\`<!DOCTYPE html><html><head><meta charset="utf-8"/>
-        <title>Orden \${d.orderNum}</title>
-        <style>
-          body{font-family:Arial,sans-serif;padding:24px;font-size:14px;color:#000}
-          h2{margin-bottom:16px;font-size:18px}
-          .row{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #eee}
-          .label{color:#666;font-size:12px}
-          .val{font-weight:bold;text-align:right}
-          .items{background:#f9f9f9;padding:10px;border-radius:6px;margin:12px 0}
-          .footer{margin-top:16px;font-size:11px;color:#999;text-align:center}
-        </style>
-      </head><body>
-        <h2>🍗 Chef Papi — \${d.orderNum}</h2>
-        <div class="row"><span class="label">Cliente</span><span class="val">\${d.name}</span></div>
-        <div class="row"><span class="label">Teléfono</span><span class="val">\${d.phone}</span></div>
-        <div class="row"><span class="label">Dirección</span><span class="val" style="max-width:220px;text-align:right">\${d.address}</span></div>
-        <div class="row"><span class="label">Zona</span><span class="val">\${d.zone}</span></div>
-        <div class="row"><span class="label">Hora</span><span class="val">\${d.time}</span></div>
-        <div class="row"><span class="label">Entrega estimada</span><span class="val">\${d.est}</span></div>
-        <div class="items"><strong>Items (Pack \${d.pack}):</strong><br/>\${d.flavors}</div>
-        <div class="row"><span class="label">Total</span><span class="val">RD$\${d.total.toLocaleString()}</span></div>
-        <div class="footer">Chef Papi · integra-foods.com · 809-883-1687</div>
-        <script>window.onload=()=>{window.print();window.close();}<\/script>
-      </body></html>\`);
+      const html = [
+        '<!DOCTYPE html><html><head><meta charset="utf-8"/><title>Orden ' + d.orderNum + '</title>',
+        '<style>body{font-family:Arial,sans-serif;padding:24px;font-size:14px;color:#000}',
+        'h2{margin-bottom:16px;font-size:18px}.row{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #eee}',
+        '.label{color:#666;font-size:12px}.val{font-weight:bold;text-align:right}',
+        '.items{background:#f9f9f9;padding:10px;border-radius:6px;margin:12px 0}',
+        '.footer{margin-top:16px;font-size:11px;color:#999;text-align:center}</style></head><body>',
+        '<h2>🍗 Chef Papi — ' + d.orderNum + '</h2>',
+        '<div class="row"><span class="label">Cliente</span><span class="val">' + d.name + '</span></div>',
+        '<div class="row"><span class="label">Teléfono</span><span class="val">' + d.phone + '</span></div>',
+        '<div class="row"><span class="label">Dirección</span><span class="val" style="max-width:220px;text-align:right">' + d.address + '</span></div>',
+        '<div class="row"><span class="label">Zona</span><span class="val">' + d.zone + '</span></div>',
+        '<div class="row"><span class="label">Hora</span><span class="val">' + d.time + '</span></div>',
+        '<div class="row"><span class="label">Entrega estimada</span><span class="val">' + d.est + '</span></div>',
+        '<div class="items"><strong>Items (Pack ' + d.pack + '):</strong><br/>' + d.flavors + '</div>',
+        '<div class="row"><span class="label">Total</span><span class="val">RD$' + Number(d.total).toLocaleString() + '</span></div>',
+        '<div class="footer">Chef Papi · integra-foods.com · 809-883-1687</div>',
+        '</body></html>'
+      ].join('');
+      w.document.write(html);
       w.document.close();
+      w.focus();
+      setTimeout(() => { w.print(); }, 400);
     }
 
     function showToast(msg, color='#22c55e') {
