@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Integra Foods | Chef Papi</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --red: #1a7a4a;
+      --dark: #0d2b45;
+      --gold: #2ecc8a;
+      --light: #f4f9f7;
+      --gray: #555;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--light);
+      color: var(--dark);
+    }
+
+    /* NAV */
+    nav {
+      background: var(--dark);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 40px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .nav-logo {
+      display: flex;
+      flex-direction: column;
+      line-height: 1.1;
+    }
+
+    .nav-logo span:first-child {
+      color: #fff;
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+
+    .nav-logo span:last-child {
+      color: var(--gold);
+      font-size: 13px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+    }
+
+    .nav-right {
+      display: flex;
+      align-items: center;
+      gap: 32px;
+    }
+
+    nav ul {
+      list-style: none;
+      display: flex;
+      gap: 32px;
+    }
+
+    nav ul a {
+      color: #ccc;
+      text-decoration: none;
+      font-size: 14px;
+      letter-spacing: 0.5px;
+      transition: color 0.2s;
+    }
+
+    nav ul a:hover { color: var(--gold); }
+
+    .lang-toggle {
+      display: flex;
+      gap: 4px;
+      background: #333;
+      border-radius: 4px;
+      padding: 3px;
+    }
+
+    .lang-toggle button {
+      background: none;
+      border: none;
+      color: #aaa;
+      font-size: 13px;
+      font-weight: 600;
+      padding: 4px 10px;
+      border-radius: 3px;
+      cursor: pointer;
+      transition: all 0.2s;
+      letter-spacing: 0.5px;
+    }
+
+    .lang-toggle button.active {
+      background: var(--gold);
+      color: #000;
+    }
+
+    /* HERO */
+    .hero {
+      background: var(--dark);
+      color: #fff;
+      text-align: center;
+      padding: 100px 24px;
+      border-bottom: 4px solid var(--red);
+    }
+
+    .hero-badge {
+      display: inline-block;
+      background: var(--red);
+      color: #fff;
+      font-size: 12px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      padding: 6px 18px;
+      border-radius: 2px;
+      margin-bottom: 24px;
+    }
+
+    .hero h1 {
+      font-size: clamp(36px, 6vw, 72px);
+      font-weight: 800;
+      line-height: 1.1;
+      margin-bottom: 12px;
+      letter-spacing: -1px;
+    }
+
+    .hero h1 span { color: var(--gold); }
+
+    .hero p {
+      font-size: 18px;
+      color: #aaa;
+      max-width: 520px;
+      margin: 0 auto 36px;
+      line-height: 1.6;
+    }
+
+    .btn {
+      display: inline-block;
+      background: var(--red);
+      color: #fff;
+      padding: 14px 36px;
+      border-radius: 4px;
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 15px;
+      letter-spacing: 0.5px;
+      transition: background 0.2s;
+    }
+
+    .btn:hover { background: #a93226; }
+
+    /* ABOUT */
+    .section {
+      padding: 80px 24px;
+      max-width: 960px;
+      margin: 0 auto;
+    }
+
+    .section-label {
+      font-size: 12px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: var(--red);
+      margin-bottom: 12px;
+      font-weight: 600;
+    }
+
+    .section h2 {
+      font-size: clamp(28px, 4vw, 42px);
+      font-weight: 700;
+      margin-bottom: 20px;
+      line-height: 1.2;
+    }
+
+    .section p {
+      font-size: 16px;
+      color: var(--gray);
+      line-height: 1.8;
+      max-width: 680px;
+    }
+
+    .divider {
+      border: none;
+      border-top: 1px solid #e0d9ce;
+    }
+
+    /* BRANDS */
+    .brands {
+      background: #fff;
+      padding: 80px 24px;
+    }
+
+    .brands-inner {
+      max-width: 960px;
+      margin: 0 auto;
+    }
+
+    .brand-cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 24px;
+      margin-top: 40px;
+    }
+
+    .brand-card {
+      border: 1px solid #e0d9ce;
+      border-radius: 8px;
+      padding: 36px 28px;
+    }
+
+    .brand-card .icon {
+      font-size: 36px;
+      margin-bottom: 16px;
+    }
+
+    .brand-card h3 {
+      font-size: 22px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .brand-card p {
+      font-size: 15px;
+      color: var(--gray);
+      line-height: 1.7;
+    }
+
+    /* PRODUCTS */
+    .products {
+      padding: 80px 24px;
+      max-width: 960px;
+      margin: 0 auto;
+    }
+
+    .product-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-top: 40px;
+    }
+
+    .product-item {
+      background: #fff;
+      border: 1px solid #e0d9ce;
+      border-radius: 8px;
+      padding: 24px 20px;
+      text-align: center;
+    }
+
+    .product-item .emoji { font-size: 32px; margin-bottom: 12px; }
+
+    .product-item h4 {
+      font-size: 16px;
+      font-weight: 600;
+    }
+
+    .product-item p {
+      font-size: 13px;
+      color: var(--gray);
+      margin-top: 6px;
+    }
+
+    /* CONTACT */
+    .contact {
+      background: var(--dark);
+      color: #fff;
+      padding: 80px 24px;
+      text-align: center;
+    }
+
+    .contact .section-label { color: var(--gold); }
+
+    .contact h2 {
+      font-size: clamp(28px, 4vw, 42px);
+      font-weight: 700;
+      margin-bottom: 16px;
+    }
+
+    .contact p {
+      color: #aaa;
+      font-size: 16px;
+      margin-bottom: 36px;
+    }
+
+    /* FOOTER */
+    footer {
+      background: #111;
+      color: #666;
+      text-align: center;
+      padding: 24px;
+      font-size: 13px;
+    }
+
+    footer span { color: var(--gold); }
+
+    @media (max-width: 600px) {
+      nav { padding: 14px 20px; }
+      nav ul { gap: 16px; }
+      .hero { padding: 70px 20px; }
+      .nav-right { gap: 16px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- NAV -->
+  <nav>
+    <div class="nav-logo">
+      <span>Integra Foods</span>
+      <span>Chef Papi</span>
+    </div>
+    <div class="nav-right">
+      <ul>
+        <li><a href="#about" data-en="About" data-es="Nosotros">About</a></li>
+        <li><a href="#products" data-en="Products" data-es="Productos">Products</a></li>
+        <li><a href="#contact" data-en="Contact" data-es="Contacto">Contact</a></li>
+      </ul>
+      <div class="lang-toggle">
+        <button onclick="setLang('en')" id="btn-en" class="active">EN</button>
+        <button onclick="setLang('es')" id="btn-es">ES</button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="hero-badge" data-en="Dominican Meat Imports" data-es="Importación de Carnes a RD">Dominican Meat Imports</div>
+    <h1 data-en="Premium Meats,<br><span>Caribbean Soul</span>" data-es="Carnes Premium,<br><span>Sabor Caribeño</span>">Premium Meats,<br><span>Caribbean Soul</span></h1>
+    <p data-en="Importing the highest-quality meats from around the world directly into the Dominican Republic." data-es="Importamos las carnes de mayor calidad del mundo directamente a la República Dominicana.">Importing the highest-quality meats from around the world directly into the Dominican Republic.</p>
+    <a href="#contact" class="btn" data-en="Get In Touch" data-es="Contáctanos">Get In Touch</a>
+  </section>
+
+  <!-- ABOUT -->
+  <section class="section" id="about">
+    <div class="section-label" data-en="Who We Are" data-es="Quiénes Somos">Who We Are</div>
+    <h2 data-en="Quality Imports, Rooted in Dominican Pride" data-es="Importaciones de Calidad, con Orgullo Dominicano">Quality Imports, Rooted in Dominican Pride</h2>
+    <p data-en="Integra Foods is a Dominican-owned meat import company dedicated to sourcing and delivering the highest-quality cuts from around the world to the Dominican Republic. We bring premium meats from top international suppliers straight to your table." data-es="Integra Foods es una empresa dominicana de importación de carnes dedicada a traer los mejores cortes del mundo a la República Dominicana. Conectamos a los mejores proveedores internacionales directamente con su mesa.">Integra Foods is a Dominican-owned meat import company dedicated to sourcing and delivering the highest-quality cuts from around the world to the Dominican Republic. We bring premium meats from top international suppliers straight to your table.</p>
+  </section>
+
+  <hr class="divider" style="max-width:960px; margin:0 auto;">
+
+  <!-- BRANDS -->
+  <div class="brands" id="brands">
+    <div class="brands-inner">
+      <div class="section-label" data-en="Our Brands" data-es="Nuestras Marcas">Our Brands</div>
+      <h2 data-en="Two Names, One Mission" data-es="Dos Nombres, Una Misión">Two Names, One Mission</h2>
+      <div class="brand-cards">
+        <div class="brand-card">
+          <div class="icon">🏢</div>
+          <h3>Integra Foods</h3>
+          <p data-en="Our import and distribution company — the backbone behind sourcing premium meats internationally and delivering them reliably across the Dominican Republic." data-es="Nuestra empresa de importación y distribución — la base detrás de la selección de carnes premium internacionales y su distribución confiable en toda la República Dominicana.">Our import and distribution company — the backbone behind sourcing premium meats internationally and delivering them reliably across the Dominican Republic.</p>
+        </div>
+        <div class="brand-card">
+          <div class="icon">👨‍🍳</div>
+          <h3>Chef Papi</h3>
+          <p data-en="The consumer-facing brand built for the culture. Chef Papi delivers bold, seasoned cuts and ready-to-cook products that make Dominican cooking come alive." data-es="La marca para el consumidor, hecha para nuestra cultura. Chef Papi ofrece cortes sazonados y productos listos para cocinar que hacen vibrar la cocina dominicana.">The consumer-facing brand built for the culture. Chef Papi delivers bold, seasoned cuts and ready-to-cook products that make Dominican cooking come alive.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PRODUCTS -->
+  <section class="products" id="products">
+    <div class="section-label" data-en="What We Offer" data-es="Lo Que Ofrecemos">What We Offer</div>
+    <h2 data-en="Our Products" data-es="Nuestros Productos">Our Products</h2>
+    <div class="product-grid">
+      <div class="product-item">
+        <div class="emoji">🥩</div>
+        <h4 data-en="Beef Cuts" data-es="Cortes de Res">Beef Cuts</h4>
+        <p data-en="Premium imported cuts for stews, grills, and more" data-es="Cortes importados premium para guisos, parrillas y más">Premium imported cuts for stews, grills, and more</p>
+      </div>
+      <div class="product-item">
+        <div class="emoji">🍗</div>
+        <h4 data-en="Poultry" data-es="Aves">Poultry</h4>
+        <p data-en="Fresh and marinated chicken, the Dominican way" data-es="Pollo fresco y marinado, al estilo dominicano">Fresh and marinated chicken, the Dominican way</p>
+      </div>
+      <div class="product-item">
+        <div class="emoji">🥓</div>
+        <h4 data-en="Pork" data-es="Cerdo">Pork</h4>
+        <p data-en="Pernil-ready cuts and seasoned pork specialties" data-es="Cortes para pernil y especialidades de cerdo sazonado">Pernil-ready cuts and seasoned pork specialties</p>
+      </div>
+      <div class="product-item">
+        <div class="emoji">🌿</div>
+        <h4 data-en="Marinated" data-es="Marinados">Marinated</h4>
+        <p data-en="Pre-seasoned meats ready for the grill or oven" data-es="Carnes pre-sazonadas listas para la parrilla o el horno">Pre-seasoned meats ready for the grill or oven</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- CONTACT -->
+  <section class="contact" id="contact">
+    <div class="section-label" data-en="Get In Touch" data-es="Contáctanos">Get In Touch</div>
+    <h2 data-en="Let's Do Business" data-es="Hagamos Negocios">Let's Do Business</h2>
+    <p data-en="Wholesale inquiries, partnerships, and orders welcome." data-es="Consultas mayoristas, alianzas y pedidos bienvenidos.">Wholesale inquiries, partnerships, and orders welcome.</p>
+    <a href="mailto:info@integra-foods.com" class="btn">info@integra-foods.com</a>
+  </section>
+
+  <!-- FOOTER -->
+  <footer>
+    <p>&copy; 2026 <span>Integra Foods</span> · Chef Papi · <span data-en="All rights reserved." data-es="Todos los derechos reservados.">All rights reserved.</span></p>
+  </footer>
+
+  <script>
+    function setLang(lang) {
+      document.querySelectorAll('[data-en]').forEach(el => {
+        el.innerHTML = el.getAttribute('data-' + lang);
+      });
+      document.getElementById('btn-en').classList.toggle('active', lang === 'en');
+      document.getElementById('btn-es').classList.toggle('active', lang === 'es');
+      document.documentElement.lang = lang;
+    }
+  </script>
+
+</body>
+</html>

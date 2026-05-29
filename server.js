@@ -44,7 +44,7 @@ const NUTRITION = {
     allergens: null,
   },
   pomodoro: {
-    name: "Marinara",
+    name: "Pomodoro",
     weight: "280g",
     cals: "~368 kcal",
     protein: "~61g",
@@ -76,8 +76,10 @@ const NUTRITION = {
 };
 
 // ── PRICES ───────────────────────────────────────────────────
-const PRICES = { 3: 870, 5: 1450, 8: 2320 };
-const UNIT_PRICE = 290;
+const DELIVERY_PRICE = 170;
+const ITBIS_RATE = 0.18;
+const UNIT_PRICE = 199;
+// No fixed pack sizes — catalog orders, any quantity ≥ 3
 
 // ── ALEGRA ───────────────────────────────────────────────────
 const ALEGRA_EMAIL     = process.env.ALEGRA_EMAIL || "frank@integra-foods.com";
@@ -87,7 +89,7 @@ const ALEGRA_PRICE_LIST  = "019e50d3-d39c-7496-9f18-7542526ed90f";
 const ALEGRA_WAREHOUSE   = "019e516a-8285-767a-88b8-07911a1aca2e"; // Chef Papi almacén
 const ALEGRA_ITEMS = {
   natural:  1,  // Chef Papi - Salt & Pepper
-  pomodoro: 2,  // Chef Papi - Marinara
+  pomodoro: 2,  // Chef Papi - Pomodoro
   pesto:    3,  // Chef Papi - Pesto de Albahaca
   bbq:      4,  // Chef Papi - BBQ Glaze
   delivery: 5,  // Delivery
@@ -111,7 +113,7 @@ async function createAlegraInvoice(order) {
     }));
 
     // Add delivery line
-    lines.push({ id: ALEGRA_ITEMS.delivery, price: 120, quantity: 1 });
+    lines.push({ id: ALEGRA_ITEMS.delivery, price: DELIVERY_PRICE, quantity: 1 });
 
     // Resolve Alegra client
     // B01 (Crédito Fiscal): find or create company contact by RNC
@@ -216,7 +218,8 @@ async function createAlegraInvoice(order) {
 
     // Register CardNet payment immediately so invoice shows as Pagado
     // order.total_price = full amount already including delivery (from Supabase orders table)
-    const totalAmount = order.total_price || ((order.price || 0) + 120);
+    const subtotalAmt = order.price || 0;
+    const totalAmount = order.total_price || (subtotalAmt + Math.round(subtotalAmt * ITBIS_RATE) + DELIVERY_PRICE);
     const payResp = await fetch(`${ALEGRA_BASE}/payments`, {
       method: "POST",
       headers: { "Content-Type": "application/json", "Authorization": `Basic ${auth}` },
@@ -399,20 +402,20 @@ INFORMACIÓN DEL PRODUCTO:
 - Pollo cocinado al grill para darle ese delicioso sabor que usted merece
 - Pollo importado de alta calidad, el mismo tipo que usan los mejores restaurantes en RD
 - Cocinado al grill aquí mismo en Santo Domingo
-- Sabores disponibles: Salt & Pepper, Marinara, Pesto de Albahaca, BBQ Glaze
+- Sabores disponibles: Salt & Pepper, Pomodoro, Pesto de Albahaca, BBQ Glaze
 - NO calentar en el envase plástico. Pasar el pollo a un plato antes de calentar.
 - Dura 6 días en la nevera después de descongelado. Nunca romper la cadena de frío.
 - Se puede congelar. Para descongelar, poner en la nevera un día antes de comer.
 
 INFORMACIÓN NUTRICIONAL (por unidad):
 Salt & Pepper — ~310 kcal | Proteína: ~63g | Grasas: ~7g | Carbs: ~0g | Sin alérgenos
-Marinara — 280g — ~368 kcal | Proteína: ~61g | Grasas: ~8.5g | Carbs: ~6.9g | Sin alérgenos
+Pomodoro — 280g — ~368 kcal | Proteína: ~61g | Grasas: ~8.5g | Carbs: ~6.9g | Sin alérgenos
 Pesto de Albahaca — 280g — ~592 kcal | Proteína: ~65g | Grasas: ~38g | Carbs: ~2.5g | ⚠️ Contiene: Lácteos (Queso Parmesano)
 BBQ Glaze — 280g — ~439 kcal | Proteína: ~61g | Grasas: ~9.2g | Carbs: ~25.3g | ⚠️ Contiene: Mostaza
 
 PRECIOS:
-- RD$290 por unidad, mínimo 3 unidades
-- Delivery: RD$120
+- RD$199 por unidad + ITBIS (18%), mínimo 3 unidades
+- Delivery: RD$170
 
 ENTREGAS:
 - Solo en Santo Domingo por el momento
@@ -460,15 +463,15 @@ const PRODUCT_PAGES = {
     name: "Salt & Pepper",
     emoji: "🧂",
     description: "Pechuga de pollo al grill con sal y pimienta. Sabor limpio, proteína pura. Perfecta para tus meals de la semana.",
-    price: "RD$290 por unidad",
+    price: "RD$199 + ITBIS (18%) por unidad",
     color: "#f97316",
     nutri: NUTRITION.natural,
   },
   pomodoro: {
-    name: "Marinara",
+    name: "Pomodoro",
     emoji: "🍅",
     description: "Pechuga al grill con salsa marinara italiana. Un toque diferente que nunca falla.",
-    price: "RD$290 por unidad",
+    price: "RD$199 + ITBIS (18%) por unidad",
     color: "#ef4444",
     nutri: NUTRITION.pomodoro,
   },
@@ -476,7 +479,7 @@ const PRODUCT_PAGES = {
     name: "Pesto de Albahaca",
     emoji: "🌿",
     description: "Pechuga al grill con pesto de albahaca fresca y queso parmesano. Fresco, aromático y lleno de sabor.",
-    price: "RD$290 por unidad",
+    price: "RD$199 + ITBIS (18%) por unidad",
     color: "#22c55e",
     nutri: NUTRITION.pesto,
   },
@@ -484,7 +487,7 @@ const PRODUCT_PAGES = {
     name: "BBQ Glaze",
     emoji: "🔥",
     description: "Pechuga al grill con salsa BBQ glaze. Ahumada, dulce y adictiva. La favorita de muchos.",
-    price: "RD$290 por unidad",
+    price: "RD$199 + ITBIS (18%) por unidad",
     color: "#f59e0b",
     nutri: NUTRITION.bbq,
   },
@@ -543,7 +546,7 @@ app.get("/product/:flavor", (req, res) => {
         </div>
         ${p.nutri.allergens ? `<div class="allergen">⚠️ Contiene: ${p.nutri.allergens}</div>` : ""}
       </div>
-      <div class="detail">Mínimo 3 unidades · Delivery RD$120</div>
+      <div class="detail">Mínimo 3 unidades · Delivery RD$170</div>
       <a href="${waLink}" class="btn">💬 Ordenar por WhatsApp</a>
     </div>
   </div>
@@ -706,35 +709,12 @@ async function handleMessage(phone, input) {
     }
 
     case "AWAITING_PACK":
-      if (["3","5","8"].includes(input)) {
-        await handlePackSelection(phone, session, input);
-      } else if (isQuestion(input)) {
+      // Catalog-only flow — orders come in as type "order" before this switch
+      if (isQuestion(input)) {
         const answer = await askAI(input);
         await sendMessage(phone, answer);
-        await sendWelcome(phone);
-      } else {
-        await sendWelcome(phone);
       }
-      break;
-
-    case "AWAITING_FLAVOR":
-      if (isQuestion(input) && !Object.keys(FLAVORS).includes(input)) {
-        const answer = await askAI(input);
-        await sendMessage(phone, answer);
-        await sendMessage(phone, "Listo, sigamos con tu orden 👆");
-      } else {
-        await handleFlavorSelection(phone, session, input);
-      }
-      break;
-
-    case "AWAITING_QTY":
-      if (isQuestion(input) && isNaN(parseInt(input))) {
-        const answer = await askAI(input);
-        await sendMessage(phone, answer);
-        await sendMessage(phone, "Listo, ¿cuántas unidades quieres? Escribe el número:");
-      } else {
-        await handleQtyInput(phone, session, input);
-      }
+      await sendWelcome(phone);
       break;
 
     case "AWAITING_CONFIRM":
@@ -807,7 +787,7 @@ async function handleMessage(phone, input) {
             customer_name: session.pending_order?.customer_name,
           },
         });
-        await sendMessage(phone, `Ta bien, cancelamos esa orden 🔄\n\n¿Qué pack quieres esta vez?`);
+        await sendMessage(phone, `Ta bien, cancelamos esa orden 🔄\n\nElige tus sabores del catálogo 🍗`);
         await sendWelcome(phone);
       } else {
         await sendMessage(phone,
@@ -869,109 +849,20 @@ async function handleMessage(phone, input) {
 // STATE HANDLERS
 // ============================================================
 
-async function handlePackSelection(phone, session, input) {
-  const size = parseInt(input);
-  if (![3, 5, 8].includes(size)) {
-    await sendWelcome(phone);
-    return;
-  }
-  await updateSession(phone, {
-    state: "AWAITING_FLAVOR",
-    pending_order: { pack_size: size, selections: [], price: PRICES[size] },
-  });
-  await sendMessage(phone,
-    `Pack de ${size} unidades seleccionado.\n` +
-    `RD$290 x ${size} = RD$${PRICES[size].toLocaleString()} + RD$120 delivery\n\n` +
-    `¿Qué sabor quieres agregar? Te quedan ${size} unidades.`
-  );
-  await sendFlavorList(phone, size);
-}
-
-async function handleFlavorSelection(phone, session, input) {
-  if (!FLAVORS[input]) {
-    const unidadesLeft = session.pending_order.pack_size - session.pending_order.selections.length;
-    await sendMessage(phone, "Selecciona un sabor de la lista 👇");
-    await sendFlavorList(phone, unidadesLeft);
-    return;
-  }
-  const flavor       = FLAVORS[input];
-  const unidadesLeft = session.pending_order.pack_size - session.pending_order.selections.length;
-
-  // If only 1 slot left, skip quantity question and auto-add it
-  if (unidadesLeft === 1) {
-    const newSelections = [...session.pending_order.selections, input];
-    const updatedOrder  = { ...session.pending_order, selections: newSelections, current_flavor: null };
-    await updateSession(phone, { state: "AWAITING_CONFIRM", pending_order: updatedOrder });
-    const summary = buildSummary(newSelections);
-    await sendMessage(phone,
-      `${flavor.emoji} *${flavor.title}* agregado.\n\n✅ ¡Tu pack está listo!\n\n${summary}\n\n` +
-      `Subtotal: RD$${PRICES[session.pending_order.pack_size].toLocaleString()}\n` +
-      `Delivery: RD$120\n` +
-      `*TOTAL: RD$${(PRICES[session.pending_order.pack_size] + 120).toLocaleString()}*`
-    );
-    await sendConfirmButtons(phone);
-    return;
-  }
-
-  await updateSession(phone, {
-    state: "AWAITING_QTY",
-    pending_order: { ...session.pending_order, current_flavor: input },
-  });
-  await sendMessage(phone,
-    `${flavor.emoji} *${flavor.title}* — ¿cuántas unidades quieres? (te quedan *${unidadesLeft} unidades*)\n\nEscribe el número:`
-  );
-}
-
-async function handleQtyInput(phone, session, input) {
-  const qty          = parseInt(input);
-  const order        = session.pending_order;
-  const unidadesLeft = order.pack_size - order.selections.length;
-  const flavor       = FLAVORS[order.current_flavor];
-
-  if (!qty || qty < 1 || isNaN(qty)) {
-    await sendMessage(phone, `Escribe un número entre 1 y ${unidadesLeft} 👇`);
-    return;
-  }
-  if (qty > unidadesLeft) {
-    await sendMessage(phone,
-      `Solo te quedan *${unidadesLeft} unidades*. ¿Cuántas ${flavor.emoji} ${flavor.title} quieres? (máximo ${unidadesLeft})`
-    );
-    return;
-  }
-
-  const newSelections = [...order.selections, ...Array(qty).fill(order.current_flavor)];
-  const remaining     = order.pack_size - newSelections.length;
-
-  if (remaining === 0) {
-    const updatedOrder = { ...order, selections: newSelections, current_flavor: null };
-    await updateSession(phone, { state: "AWAITING_CONFIRM", pending_order: updatedOrder });
-    const summary = buildSummary(newSelections);
-    await sendMessage(phone,
-      `✅ ¡Tu pack está listo!\n\n${summary}\n\n` +
-      `Subtotal: RD$${PRICES[order.pack_size].toLocaleString()}\n` +
-      `Delivery: RD$120\n` +
-      `*TOTAL: RD$${(PRICES[order.pack_size] + 120).toLocaleString()}*`
-    );
-    await sendConfirmButtons(phone);
-  } else {
-    const updatedOrder = { ...order, selections: newSelections, current_flavor: null };
-    await updateSession(phone, { state: "AWAITING_FLAVOR", pending_order: updatedOrder });
-    await sendMessage(phone, `✅ Agregado. Te quedan *${remaining} unidades*.\n¿Qué otro sabor quieres?`);
-    await sendFlavorList(phone, remaining);
-  }
-}
-
 async function handleConfirmation(phone, session, input) {
   if (input === "confirm") {
     await continueToCustomerInfo(phone, session);
   } else if (input === "change") {
-    const size = session.pending_order.pack_size;
     await updateSession(phone, {
-      state: "AWAITING_FLAVOR",
-      pending_order: { pack_size: size, selections: [], price: PRICES[size] },
+      state: "AWAITING_PACK",
+      pending_order: {
+        customer_name:    session.pending_order?.customer_name,
+        delivery_address: session.pending_order?.delivery_address,
+        zone_hint:        session.pending_order?.zone_hint,
+      },
     });
-    await sendMessage(phone, `Ta bien! Empecemos de nuevo 🔄\nTe quedan *${size} unidades*.`);
-    await sendFlavorList(phone, size);
+    await sendMessage(phone, `Ta bien! Elige de nuevo desde el catálogo 🔄`);
+    await sendCatalogMessage(phone);
   }
 }
 
@@ -1241,11 +1132,13 @@ async function handleCatalogOrder(phone, order) {
       },
     });
 
+    const itbisCat = Math.round(price * ITBIS_RATE);
     await sendMessage(phone,
       `🛒 Tu orden:\n\n${summary}\n\n` +
       `Subtotal: RD$${price.toLocaleString()}\n` +
-      `Delivery: RD$120\n` +
-      `*TOTAL: RD$${(price + 120).toLocaleString()}*`
+      `ITBIS (18%): RD$${itbisCat.toLocaleString()}\n` +
+      `Delivery: RD$${DELIVERY_PRICE.toLocaleString()}\n` +
+      `*TOTAL: RD$${(price + itbisCat + DELIVERY_PRICE).toLocaleString()}*`
     );
     await sendConfirmButtons(phone);
   } catch (err) {
@@ -1277,7 +1170,8 @@ async function createOrderAndCharge(phone, session, address) {
     order.estimated_delivery = delivery ? delivery.estimated : "Por confirmar";
   }
 
-  const totalPrice = (order.price || 0) + 120;
+  const orderSubtotal = order.price || 0;
+  const totalPrice = orderSubtotal + Math.round(orderSubtotal * ITBIS_RATE) + DELIVERY_PRICE;
 
   const { data: newOrder, error: insertError } = await supabase
     .from("orders")
@@ -1314,8 +1208,8 @@ async function createOrderAndCharge(phone, session, address) {
   const serverUrl = "https://chef-papi-production.up.railway.app";
   const testUrl   = process.env.TEST_PAYMENT_URL || `${serverUrl}/payment.html`;
   const paymentLink = process.env.CARDNET_LIVE === "true"
-    ? `https://pay.cardnet.com.do/checkout?order=${newOrder.id}&amount=${order.price + 120}`
-    : `${testUrl}?order=${newOrder.id}&amount=${order.price + 120}&server=${serverUrl}`;
+    ? `https://pay.cardnet.com.do/checkout?order=${newOrder.id}&amount=${totalPrice}`
+    : `${testUrl}?order=${newOrder.id}&amount=${totalPrice}&server=${serverUrl}`;
 
   await supabase.from("orders").update({ cardnet_ref: `CN-${newOrder.id}` }).eq("id", newOrder.id);
 
@@ -1573,7 +1467,7 @@ async function sendCatalogMessage(phone) {
     interactive: {
       type: "product_list",
       header: { type: "text", text: "Chef Papi 🍗" },
-      body:   { text: "Escoge tus sabores 👇\nRD$290 por unidad · Mínimo 3 · Delivery RD$120" },
+      body:   { text: "Escoge tus sabores 👇\nRD$199 + ITBIS (18%) por unidad · Mínimo 3 · Delivery RD$170" },
       action: {
         catalog_id: CATALOG_ID,
         sections: [{
@@ -1584,27 +1478,6 @@ async function sendCatalogMessage(phone) {
             { product_retailer_id: "4ihnitfbi4" },
             { product_retailer_id: "ujflq59q37" },
           ],
-        }],
-      },
-    },
-  });
-}
-
-async function sendFlavorList(phone, unidadesLeft) {
-  await sendWA(phone, {
-    type: "interactive",
-    interactive: {
-      type: "list",
-      header: { type: "text", text: `Te quedan ${unidadesLeft} unidades` },
-      body:   { text: "¿Qué sabor quieres agregar?" },
-      action: {
-        button: "Ver sabores 🍗",
-        sections: [{
-          title: "Sabores disponibles",
-          rows: Object.entries(FLAVORS).map(([id, f]) => ({
-            id,
-            title: `${f.emoji} ${f.title}`,
-          })),
         }],
       },
     },
@@ -2884,7 +2757,7 @@ app.post("/admin/test-webhook", async (req, res) => {
         address:            "Av. Test 123, Piantini",
         items:              "🧂 Natural x2, 🍅 Pomodoro x1",
         pack_size:          3,
-        total:              "RD$990",
+        total:              "RD$874",
         delivery_zone:      "Piantini",
         estimated_delivery: "Hoy 45min - 3 horas",
         timestamp:          timeStr,

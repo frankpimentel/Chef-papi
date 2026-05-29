@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Chef Papi — Diagrama de Operaciones</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: #f8fafc;
+    color: #1e293b;
+    padding: 40px 24px;
+    min-height: 100vh;
+  }
+
+  .header {
+    text-align: center;
+    margin-bottom: 48px;
+  }
+  .header h1 {
+    font-size: 28px;
+    font-weight: 800;
+    color: #0f172a;
+    margin-bottom: 6px;
+  }
+  .header p {
+    color: #64748b;
+    font-size: 14px;
+  }
+  .logo {
+    font-size: 40px;
+    margin-bottom: 10px;
+  }
+
+  .diagram {
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+
+  .lanes {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr 1fr;
+    gap: 0;
+    border: 2px solid #e2e8f0;
+    border-radius: 16px;
+    overflow: hidden;
+  }
+
+  .lane {
+    border-right: 1px solid #e2e8f0;
+    padding-bottom: 32px;
+  }
+  .lane:last-child { border-right: none; }
+
+  .lane-header {
+    padding: 14px 16px;
+    text-align: center;
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .8px;
+  }
+  .lane-header .icon { font-size: 20px; display: block; margin-bottom: 4px; }
+
+  .lane-customer .lane-header { background: #eff6ff; color: #1d4ed8; border-bottom: 2px solid #bfdbfe; }
+  .lane-bot     .lane-header { background: #fef9c3; color: #92400e; border-bottom: 2px solid #fde68a; }
+  .lane-payment .lane-header { background: #f0fdf4; color: #166534; border-bottom: 2px solid #bbf7d0; }
+  .lane-mbe     .lane-header { background: #fdf4ff; color: #6b21a8; border-bottom: 2px solid #e9d5ff; }
+
+  .lane-body { padding: 20px 12px; display: flex; flex-direction: column; gap: 8px; }
+
+  .step {
+    border-radius: 10px;
+    padding: 10px 12px;
+    font-size: 12.5px;
+    line-height: 1.5;
+    position: relative;
+  }
+  .step strong { display: block; font-size: 12px; margin-bottom: 2px; }
+  .step .sub { font-size: 11px; color: #64748b; margin-top: 3px; }
+
+  .step-blue   { background: #eff6ff; border: 1.5px solid #bfdbfe; color: #1e3a5f; }
+  .step-yellow { background: #fefce8; border: 1.5px solid #fde68a; color: #78350f; }
+  .step-green  { background: #f0fdf4; border: 1.5px solid #bbf7d0; color: #14532d; }
+  .step-purple { background: #faf5ff; border: 1.5px solid #e9d5ff; color: #4c1d95; }
+  .step-gray   { background: #f8fafc; border: 1.5px solid #e2e8f0; color: #475569; }
+
+  .arrow {
+    text-align: center;
+    color: #94a3b8;
+    font-size: 18px;
+    margin: 2px 0;
+    line-height: 1;
+  }
+
+  .trigger-section {
+    max-width: 1100px;
+    margin: 24px auto 0 auto;
+    background: #fff;
+    border: 2px solid #e2e8f0;
+    border-radius: 16px;
+    padding: 24px 28px;
+  }
+  .trigger-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: #475569;
+    text-transform: uppercase;
+    letter-spacing: .6px;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .trigger-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 16px;
+  }
+  .trigger-card {
+    border-radius: 12px;
+    padding: 16px;
+    font-size: 12.5px;
+    line-height: 1.6;
+  }
+  .trigger-card strong { display: block; font-size: 13px; margin-bottom: 6px; }
+  .tc-alegra   { background: #fff7ed; border: 1.5px solid #fed7aa; color: #7c2d12; }
+  .tc-whatsapp { background: #f0fdf4; border: 1.5px solid #bbf7d0; color: #14532d; }
+  .tc-mbe      { background: #faf5ff; border: 1.5px solid #e9d5ff; color: #4c1d95; }
+
+  .products-section {
+    max-width: 1100px;
+    margin: 24px auto 0 auto;
+    background: #fff;
+    border: 2px solid #e2e8f0;
+    border-radius: 16px;
+    padding: 24px 28px;
+  }
+  .products-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-top: 12px;
+  }
+  .product-card {
+    border-radius: 10px;
+    padding: 14px;
+    text-align: center;
+    font-size: 12px;
+  }
+  .product-card .emoji { font-size: 28px; margin-bottom: 6px; display: block; }
+  .product-card strong { display: block; font-size: 13px; margin-bottom: 4px; }
+  .product-card .details { color: #64748b; font-size: 11px; line-height: 1.5; }
+
+  .pc-1 { background: #fff7ed; border: 1.5px solid #fed7aa; }
+  .pc-2 { background: #fff1f2; border: 1.5px solid #fecdd3; }
+  .pc-3 { background: #f0fdf4; border: 1.5px solid #bbf7d0; }
+  .pc-4 { background: #fefce8; border: 1.5px solid #fde68a; }
+
+  .footer {
+    text-align: center;
+    margin-top: 40px;
+    font-size: 11px;
+    color: #94a3b8;
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="logo">🍗</div>
+  <h1>Chef Papi — Diagrama de Operaciones</h1>
+  <p>Proceso completo desde el pedido del cliente hasta la entrega · Santo Domingo, República Dominicana</p>
+</div>
+
+<div class="diagram">
+  <div class="lanes">
+
+    <!-- CLIENTE -->
+    <div class="lane lane-customer">
+      <div class="lane-header">
+        <span class="icon">📱</span>
+        Cliente
+      </div>
+      <div class="lane-body">
+        <div class="step step-blue">
+          <strong>1. Contacta por WhatsApp</strong>
+          Escribe al <b>+1 809 883 1687</b> o hace el pedido directo desde el <b>carrito del catálogo de Meta</b> — agrega productos y envía el carrito sin salir de WhatsApp
+          <div class="sub">Disponible: Salt &amp; Pepper, Marinara, Pesto, BBQ</div>
+        </div>
+        <div class="arrow">↓</div>
+        <div class="step step-blue">
+          <strong>2. Confirma zona de entrega</strong>
+          El bot pregunta si está en Santo Domingo → Distrito Nacional o fuera
+        </div>
+        <div class="arrow">↓</div>
+        <div class="step step-blue">
+          <strong>3. Elige el pack</strong>
+          Pack de 3 unidades · mínimo 3 packs por pedido
+          <div class="sub">RD$290/unidad + RD$120 de delivery</div>
+        </div>
+        <div class="arrow">↓</div>
+        <div class="step step-blue">
+          <strong>4. Selecciona sabores</strong>
+          Puede combinar los 4 sabores disponibles
+        </div>
+        <div class="arrow">↓</div>
+        <div class="step step-blue">
+          <strong>5. Proporciona nombre y dirección</strong>
+          Clientes frecuentes: dirección autocompletada
+          <div class="sub">Clientes nuevos: datos guardados para próxima orden</div>
+        </div>
+        <div class="arrow">↓</div>
+        <div class="step step-blue">
+          <strong>6. Elige tipo de comprobante</strong>
+          B02 Consumidor Final o B01 Crédito Fiscal (requiere RNC)
+        </div>
+        <div class="arrow">↓</div>
+        <div class="step step-blue">
+          <strong>7. Paga con CardNet</strong>
+          Tarjeta de débito/crédito · Link de pago seguro
+          <div class="sub">Ventana de 30 minutos para pagar</div>
+        </div>
+        <div class="arrow">↓</div>
+        <div class="step step-green">
+          <strong>8. Recibe confirmación</strong>
+          Mensaje de WhatsApp con # de orden, tiempo de entrega y número de comprobante fiscal
+        </div>
+        <div class="arrow">↓</div>
+        <div class="step step-green">
+          <strong>9. Recibe su pedido</strong>
+          Pollo al grill entregado frío (cadena de frío mantenida)
+          <div class="sub">⚠️ Pasar a un plato antes de calentar en microondas</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- BOT -->
+    <div class="lane lane-bot">
+      <div class="lane-header">
+        <span class="icon">🤖</span>
+        Bot Chef Papi
+      </div>
+      <div class="lane-body">
+        <div class="step step-yellow">
+          <strong>WhatsApp Cloud API (Meta)</strong>
+          El webhook de Meta recibe todos los mensajes entrantes en tiempo real
+        </div>
+        <div class="arrow">↓</div>
+        <div class="step step-yellow">
+          <strong>Verificación de duplicados</strong>
+          Supabase evita procesar el mismo mensaje dos veces
+          <div class="sub">Mensajes con más de 5 min se ignoran automáticamente</div>
+        </div>
+        <div class="arrow">↓</div>
+        <div class="step step-yellow">
+          <strong>Máquina de estados por sesión</strong>
+          Rastrea en qué paso del flujo está cada cliente
+          <div class="sub">Tiempo de espera: 10 min · Se reinicia si el cliente no responde</div>
+        </div>
+        <div class="arrow">↓</div>
+        <div class="step step-yellow">
+          <strong>FAQ con Inteligencia Artificial</strong>
+          Claude (Anthropic) responde preguntas del producto en español natural
+          <div class="sub">Nutrición · alérgenos · almacenamiento · calentamiento</div>
+        </div>
+        <div class="arrow">↓</div>
+        <div class="step step-yellow">
+          <strong>Validación de zona de entrega</strong>
+          Verifica la dirección contra los sectores conocidos del Distrito Nacional
+          <div class="sub">Antes 3:30PM → mismo día · Después → próxima mañana</div>
+        </div>
+        <div class="arrow">↓</div>
+        <div class="step step-yellow">
+          <strong>Traspaso a agente humano</strong>
+          "Hablar con humano" → escala al equipo de inmediato
+        </div>
+        <div class="arrow">↓</div>
+        <div class="step step-yellow">
+          <strong>Orden guardada en Supabase</strong>
+          Estado: pendiente → pagado → entregado
+          <div class="sub">Ítems, cliente, dirección y tipo de NCF registrados</div>
+        </div>
+        <div class="arrow">↓</div>
+        <div class="step step-yellow">
+          <strong>Carrito del catálogo Meta</strong>
+          El cliente puede agregar productos directamente desde el catálogo de WhatsApp y enviar el carrito — el bot lo procesa automáticamente
+          <div class="sub">Mínimo 3 packs para confirmar el pedido</div>
+        </div>
+        <div class="arrow">↓</div>
+        <div class="step step-yellow">
+          <strong>Link de pago enviado</strong>
+          Link personalizado de CardNet con el monto exacto de la orden
+        </div>
+      </div>
+    </div>
+
+    <!-- PAGO Y FACTURACIÓN -->
+    <div class="lane lane-payment">
+      <div class="lane-header">
+        <span class="icon">💳</span>
+        Pago y Facturación
+      </div>
+      <div class="lane-body">
+        <div class="step step-green">
+          <strong>Pasarela de pago CardNet</strong>
+          Red nacional de tarjetas de la República Dominicana
+          <div class="sub">Acepta tarjetas de débito y crédito</div>
+        </div>
+        <div class="arrow">↓</div>
+        <div class="step step-green">
+          <strong>Webhook de pago activado</strong>
+          CardNet notifica a <code>/payment-confirm</code> cuando el pago es APROBADO
+        </div>
+        <div class="arrow">↓</div>
+        <div class="step step-green">
+          <strong>Estado de orden → PAGADO</strong>
+          Supabase actualizado con el número de referencia de CardNet
+        </div>
+        <div class="arrow">↓</div>
+        <div class="step step-green">
+          <strong>Factura Alegra generada automáticamente</strong>
+          Comprobante fiscal con el NCF correcto:
+          <div class="sub">
+            B01 — Crédito Fiscal (empresas)<br/>
+            B02 — Consumidor Final (personas)
+          </div>
+        </div>
+        <div class="arrow">↓</div>
+        <div class="step step-green">
+          <strong>Contacto resuelto automáticamente</strong>
+          B01: busca o crea empresa por RNC<br/>
+          B02: usa el contacto Consumidor Final por defecto
+        </div>
+        <div class="arrow">↓</div>
+        <div class="step step-green">
+          <strong>Pago registrado en Alegra</strong>
+          Vinculado a la cuenta bancaria CardNet
+          <div class="sub">La factura queda marcada inmediatamente como Pagada</div>
+        </div>
+        <div class="arrow">↓</div>
+        <div class="step step-green">
+          <strong>NCF enviado al cliente</strong>
+          Número completo del comprobante incluido en el mensaje de confirmación de WhatsApp
+        </div>
+        <div class="arrow">↓</div>
+        <div class="step step-gray">
+          <strong>Contabilidad en Alegra</strong>
+          Todos los ingresos registrados automáticamente
+          <div class="sub">Conciliación bancaria desde el panel de Alegra</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MBE / LOGÍSTICA -->
+    <div class="lane lane-mbe">
+      <div class="lane-header">
+        <span class="icon">🚚</span>
+        MBE Logística
+      </div>
+      <div class="lane-body">
+        <div class="step step-gray">
+          <strong>Inventario disponible</strong>
+          Pollo al grill (4 sabores) almacenado en el centro logístico de MBE
+          <div class="sub">Cadena de frío mantenida en todo momento</div>
+        </div>
+        <div class="arrow">↓</div>
+        <div class="step step-purple">
+          <strong>Notificación de nueva orden</strong>
+          Se activa automáticamente al confirmar el pago
+          <div class="sub">Datos enviados a Google Sheets vía webhook</div>
+        </div>
+        <div class="arrow">↓</div>
+        <div class="step step-purple">
+          <strong>Registro en Google Sheets</strong>
+          Cada orden pagada se agrega automáticamente con:
+          <div class="sub">
+            # Orden · Nombre · Teléfono<br/>
+            Dirección · Sabores · Pack<br/>
+            Total · Zona · Tiempo estimado · Hora
+          </div>
+        </div>
+        <div class="arrow">↓</div>
+        <div class="step step-purple">
+          <strong>Preparación del pedido</strong>
+          El equipo de MBE consulta Google Sheets y prepara el pedido
+          <div class="sub">Selecciona los sabores correctos según la orden</div>
+        </div>
+        <div class="arrow">↓</div>
+        <div class="step step-purple">
+          <strong>Despacho del delivery</strong>
+          Distrito Nacional: mismo día (antes 3:30PM) o próxima mañana<br/>
+          Fuera del DN: dentro de 24 horas
+        </div>
+        <div class="arrow">↓</div>
+        <div class="step step-purple">
+          <strong>Entrega completada</strong>
+          Cliente recibe pollo al grill frío, listo para calentar
+          <div class="sub">6 días en nevera · Se puede congelar</div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- fin lanes -->
+
+  <!-- ── AL CONFIRMAR EL PAGO ── -->
+  <div class="trigger-section">
+    <div class="trigger-title">⚡ Al confirmarse el pago — 3 cosas ocurren simultáneamente</div>
+    <div class="trigger-grid">
+      <div class="trigger-card tc-alegra">
+        <strong>📄 Factura Alegra</strong>
+        Se genera automáticamente la factura fiscal con el NCF correcto (B01 o B02). Los contactos de empresas se crean solos por RNC. El pago se registra contra la cuenta CardNet. La factura queda marcada como Pagada de inmediato.
+      </div>
+      <div class="trigger-card tc-whatsapp">
+        <strong>💬 WhatsApp al cliente</strong>
+        Se envía mensaje de confirmación con: número de orden, resumen de ítems, tiempo estimado de entrega y número completo del comprobante fiscal (NCF). Luego aparecen opciones para hacer un nuevo pedido.
+      </div>
+      <div class="trigger-card tc-mbe">
+        <strong>📊 Google Sheets — MBE</strong>
+        Se agrega una nueva fila en tiempo real con: # orden, nombre y teléfono del cliente, dirección completa de entrega, ítems por sabor, tamaño del pack, total, zona, tiempo estimado y hora en Santo Domingo.
+      </div>
+    </div>
+  </div>
+
+  <!-- ── PRODUCTOS ── -->
+  <div class="products-section">
+    <div class="trigger-title">🍗 Productos Disponibles</div>
+    <div class="products-grid">
+      <div class="product-card pc-1">
+        <span class="emoji">🧂</span>
+        <strong>Salt &amp; Pepper</strong>
+        <div class="details">200g · ~310 kcal · ~63g proteína<br/>Sin alérgenos</div>
+      </div>
+      <div class="product-card pc-2">
+        <span class="emoji">🍅</span>
+        <strong>Marinara</strong>
+        <div class="details">280g · ~368 kcal · ~61g proteína<br/>Sin alérgenos</div>
+      </div>
+      <div class="product-card pc-3">
+        <span class="emoji">🌿</span>
+        <strong>Pesto de Albahaca</strong>
+        <div class="details">280g · ~592 kcal · ~65g proteína<br/>⚠️ Contiene: lácteos (Parmesano)</div>
+      </div>
+      <div class="product-card pc-4">
+        <span class="emoji">🔥</span>
+        <strong>BBQ Glaze</strong>
+        <div class="details">280g · ~439 kcal · ~61g proteína<br/>⚠️ Contiene: mostaza</div>
+      </div>
+    </div>
+    <div style="margin-top:16px;padding:12px 16px;background:#f8fafc;border-radius:8px;font-size:12px;color:#475569;display:grid;grid-template-columns:repeat(4,1fr);gap:12px">
+      <div><strong>Precios</strong><br/>RD$290/unidad · RD$120 delivery<br/>Mínimo 3 packs</div>
+      <div><strong>Pack</strong><br/>Pack de 3 unidades — RD$870<br/><b>Mínimo: 3 packs por pedido</b></div>
+      <div><strong>Zonas de entrega</strong><br/>Distrito Nacional: mismo día<br/>Fuera del DN: 24 horas<br/>Hora límite: 3:30 PM</div>
+      <div><strong>Almacenamiento</strong><br/>6 días en nevera<br/>Se puede congelar<br/>⚠️ No calentar en el envase plástico</div>
+    </div>
+  </div>
+
+  <!-- ── TECNOLOGÍA ── -->
+  <div class="trigger-section" style="margin-top:24px">
+    <div class="trigger-title">🛠 Plataforma Tecnológica</div>
+    <div class="trigger-grid">
+      <div class="trigger-card" style="background:#f8fafc;border:1.5px solid #e2e8f0;color:#334155">
+        <strong>Backend</strong>
+        Node.js + Express en Railway<br/>
+        Supabase (PostgreSQL) para órdenes, sesiones y clientes<br/>
+        URL: chef-papi-production.up.railway.app
+      </div>
+      <div class="trigger-card" style="background:#f8fafc;border:1.5px solid #e2e8f0;color:#334155">
+        <strong>Integraciones</strong>
+        Meta WhatsApp Cloud API (mensajería)<br/>
+        CardNet (procesamiento de pagos dominicano)<br/>
+        Alegra (contabilidad y comprobantes fiscales)<br/>
+        Claude AI / Anthropic (respuestas de FAQ)
+      </div>
+      <div class="trigger-card" style="background:#f8fafc;border:1.5px solid #e2e8f0;color:#334155">
+        <strong>Integración MBE</strong>
+        Webhook a Google Sheets — cada orden pagada se registra automáticamente<br/>
+        Tiempo real · Sin entrada manual<br/>
+        Incluye todos los datos del cliente y la orden
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    Chef Papi · Integra Foods · Santo Domingo, República Dominicana<br/>
+    frank@integra-foods.com · wa.me/18098831687
+  </div>
+
+</div>
+
+</body>
+</html>

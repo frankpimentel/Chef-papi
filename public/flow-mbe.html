@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Chef Papi — Guía MBE</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: #f8fafc;
+    color: #1e293b;
+    padding: 40px 24px;
+  }
+
+  .header {
+    text-align: center;
+    margin-bottom: 40px;
+  }
+  .header .logo { font-size: 48px; margin-bottom: 10px; }
+  .header h1 { font-size: 26px; font-weight: 800; color: #0f172a; margin-bottom: 6px; }
+  .header p { color: #64748b; font-size: 14px; }
+
+  .wrap { max-width: 820px; margin: 0 auto; }
+
+  /* ── STEPS ── */
+  .steps { display: flex; flex-direction: column; gap: 0; margin-bottom: 36px; }
+  .step-row { display: flex; align-items: flex-start; gap: 20px; }
+  .step-left { display: flex; flex-direction: column; align-items: center; }
+  .step-num {
+    width: 44px; height: 44px; border-radius: 50%;
+    background: #1e293b; color: #fff;
+    font-size: 18px; font-weight: 800;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .step-line { width: 2px; flex: 1; background: #e2e8f0; min-height: 28px; }
+  .step-body {
+    background: #fff;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 18px 20px;
+    flex: 1;
+    margin-bottom: 12px;
+  }
+  .step-body h3 { font-size: 15px; font-weight: 700; margin-bottom: 5px; }
+  .step-body p { font-size: 13px; color: #475569; line-height: 1.6; }
+  .step-body .tag {
+    display: inline-block; margin-top: 8px;
+    padding: 3px 10px; border-radius: 99px;
+    font-size: 11px; font-weight: 600;
+  }
+  .tag-blue   { background: #eff6ff; color: #1d4ed8; }
+  .tag-green  { background: #f0fdf4; color: #166534; }
+  .tag-yellow { background: #fefce8; color: #92400e; }
+  .tag-purple { background: #faf5ff; color: #6b21a8; }
+
+  /* ── INFO GRID ── */
+  .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 36px; }
+  .info-card {
+    background: #fff;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 20px;
+  }
+  .info-card h3 { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: #94a3b8; margin-bottom: 12px; }
+  .info-card ul { list-style: none; display: flex; flex-direction: column; gap: 8px; }
+  .info-card li { font-size: 13px; color: #334155; line-height: 1.5; display: flex; gap: 8px; }
+  .info-card li span { flex-shrink: 0; }
+
+  /* ── PRODUCTS ── */
+  .products { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 36px; }
+  .prod-card {
+    background: #fff;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 16px;
+    text-align: center;
+  }
+  .prod-card .emoji { font-size: 32px; display: block; margin-bottom: 8px; }
+  .prod-card strong { display: block; font-size: 13px; font-weight: 700; margin-bottom: 4px; }
+  .prod-card p { font-size: 11px; color: #64748b; line-height: 1.5; }
+
+  /* ── SECTION TITLE ── */
+  .section-title {
+    font-size: 11px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .8px; color: #94a3b8;
+    margin-bottom: 14px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #e2e8f0;
+  }
+
+  /* ── ZONES ── */
+  .zones { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 36px; }
+  .zone-card {
+    border-radius: 12px;
+    padding: 18px;
+  }
+  .zone-dn  { background: #f0fdf4; border: 1.5px solid #bbf7d0; }
+  .zone-out { background: #fff7ed; border: 1.5px solid #fed7aa; }
+  .zone-card h3 { font-size: 14px; font-weight: 700; margin-bottom: 8px; }
+  .zone-card p  { font-size: 13px; line-height: 1.6; color: #475569; }
+
+  .footer {
+    text-align: center;
+    font-size: 11px;
+    color: #94a3b8;
+    margin-top: 40px;
+    padding-top: 20px;
+    border-top: 1px solid #e2e8f0;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="header">
+    <div class="logo">🍗</div>
+    <h1>Chef Papi — Guía de Operaciones MBE</h1>
+    <p>Todo lo que necesitas saber para procesar y entregar los pedidos</p>
+  </div>
+
+  <!-- ── FLUJO ── -->
+  <div class="section-title">📋 Flujo de un pedido</div>
+  <div class="steps">
+
+    <div class="step-row">
+      <div class="step-left">
+        <div class="step-num">1</div>
+        <div class="step-line"></div>
+      </div>
+      <div class="step-body">
+        <h3>Cliente ordena y paga por WhatsApp</h3>
+        <p>El cliente hace su pedido directamente desde WhatsApp — ya sea escribiendo o usando el carrito del catálogo de Meta. Elige sus sabores, pone su dirección y paga con tarjeta. Todo automático.</p>
+        <span class="tag tag-blue">No requiere acción de MBE</span>
+      </div>
+    </div>
+
+    <div class="step-row">
+      <div class="step-left">
+        <div class="step-num">2</div>
+        <div class="step-line"></div>
+      </div>
+      <div class="step-body">
+        <h3>Orden aparece en Google Sheets</h3>
+        <p>En el momento que se confirma el pago, una nueva fila se agrega automáticamente en el Google Sheets compartido con MBE. Contiene toda la información necesaria para procesar el pedido.</p>
+        <span class="tag tag-purple">Acción: revisar Google Sheets</span>
+      </div>
+    </div>
+
+    <div class="step-row">
+      <div class="step-left">
+        <div class="step-num">3</div>
+        <div class="step-line"></div>
+      </div>
+      <div class="step-body">
+        <h3>Preparar el pedido</h3>
+        <p>Con la información del Google Sheets, el equipo selecciona los sabores correctos según la orden. Cada pedido es mínimo 3 packs de 3 unidades.</p>
+        <span class="tag tag-yellow">Acción: pick &amp; pack según la orden</span>
+      </div>
+    </div>
+
+    <div class="step-row">
+      <div class="step-left">
+        <div class="step-num">4</div>
+        <div class="step-line"></div>
+      </div>
+      <div class="step-body">
+        <h3>Despachar la entrega</h3>
+        <p>Entregar al cliente en la dirección indicada en el Google Sheets. Respetar los tiempos según la zona. Mantener la cadena de frío en todo momento.</p>
+        <span class="tag tag-green">Acción: despacho y entrega</span>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ── DATOS EN GOOGLE SHEETS ── -->
+  <div class="section-title">📊 Datos que llegan al Google Sheets por cada orden</div>
+  <div class="info-grid">
+    <div class="info-card">
+      <h3>Información del cliente</h3>
+      <ul>
+        <li><span>📋</span> Número de orden (Ej: CP-00042)</li>
+        <li><span>👤</span> Nombre completo</li>
+        <li><span>📱</span> Teléfono WhatsApp</li>
+        <li><span>📍</span> Dirección completa de entrega</li>
+        <li><span>🗺️</span> Zona de entrega</li>
+      </ul>
+    </div>
+    <div class="info-card">
+      <h3>Información del pedido</h3>
+      <ul>
+        <li><span>🍗</span> Sabores y cantidad por sabor</li>
+        <li><span>📦</span> Tamaño del pack</li>
+        <li><span>💰</span> Total pagado</li>
+        <li><span>⏱️</span> Tiempo estimado de entrega</li>
+        <li><span>🕐</span> Hora del pedido (hora SD)</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ── PRODUCTOS ── -->
+  <div class="section-title">🍗 Productos — 4 sabores disponibles</div>
+  <div class="products">
+    <div class="prod-card">
+      <span class="emoji">🧂</span>
+      <strong>Salt &amp; Pepper</strong>
+      <p>200g · Sin alérgenos</p>
+    </div>
+    <div class="prod-card">
+      <span class="emoji">🍅</span>
+      <strong>Pomodoro</strong>
+      <p>280g · Sin alérgenos</p>
+    </div>
+    <div class="prod-card">
+      <span class="emoji">🌿</span>
+      <strong>Pesto de Albahaca</strong>
+      <p>280g · ⚠️ Contiene lácteos</p>
+    </div>
+    <div class="prod-card">
+      <span class="emoji">🔥</span>
+      <strong>BBQ Glaze</strong>
+      <p>280g · ⚠️ Contiene mostaza</p>
+    </div>
+  </div>
+
+  <!-- ── ZONAS ── -->
+  <div class="section-title">🗺️ Zonas y tiempos de entrega</div>
+  <div class="zones">
+    <div class="zone-card zone-dn">
+      <h3>🟢 Distrito Nacional</h3>
+      <p>
+        <b>Pedidos antes de las 3:30 PM</b><br/>
+        Entregar el mismo día · 45 min a 3 horas<br/><br/>
+        <b>Pedidos después de las 3:30 PM</b><br/>
+        Entregar a la mañana siguiente
+      </p>
+    </div>
+    <div class="zone-card zone-out">
+      <h3>🟡 Fuera del Distrito Nacional</h3>
+      <p>
+        Entregar dentro de las <b>próximas 24 horas</b> desde la confirmación del pago.<br/><br/>
+        Incluye: Santo Domingo Este, Norte, Oeste y otras provincias.
+      </p>
+    </div>
+  </div>
+
+  <!-- ── NOTAS IMPORTANTES ── -->
+  <div class="section-title">⚠️ Notas importantes</div>
+  <div class="info-card" style="margin-bottom:36px">
+    <ul>
+      <li><span>❄️</span> <b>Cadena de frío:</b> El pollo se entrega y almacena siempre frío. No romper la cadena de frío en ningún momento.</li>
+      <li><span>📦</span> <b>Mínimo por pedido:</b> 3 packs de 3 unidades (9 unidades mínimo).</li>
+      <li><span>🔥</span> <b>Instrucción al cliente:</b> No calentar en el envase plástico — pasar a un plato antes del microondas.</li>
+      <li><span>📅</span> <b>Vida útil:</b> 6 días en nevera desde descongelado · Se puede congelar.</li>
+      <li><span>💳</span> <b>Pago:</b> Todos los pedidos llegan ya pagados con tarjeta. MBE no cobra en la entrega.</li>
+    </ul>
+  </div>
+
+  <div class="footer">
+    Chef Papi · Integra Foods · Santo Domingo, República Dominicana<br/>
+    Contacto: frank@integra-foods.com · +1 809 883 1687
+  </div>
+
+</div>
+</body>
+</html>
