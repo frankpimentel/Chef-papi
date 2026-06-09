@@ -542,11 +542,17 @@ app.get("/product/:flavor", (req, res) => {
     .alg-ok   { background: #22c55e18; color: #22c55e; border: 1px solid #22c55e44; }
 
     /* Instructions */
-    .instructions { display: flex; flex-direction: column; gap: 8px; }
-    .instr-row { display: flex; gap: 12px; align-items: flex-start; background: #222; border-radius: 10px; padding: 12px 14px; }
-    .instr-icon { font-size: 20px; flex-shrink: 0; }
-    .instr-text { font-size: 13px; color: #ccc; line-height: 1.5; }
-    .instr-text strong { color: #f0f0f0; display: block; margin-bottom: 2px; }
+    .heat-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 10px; }
+    .heat-card { background: #222; border-radius: 12px; padding: 16px 8px 12px; text-align: center; }
+    .heat-icon { font-size: 28px; display: block; margin-bottom: 8px; }
+    .heat-method { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #888; margin-bottom: 6px; }
+    .heat-time { font-size: 18px; font-weight: 800; color: ${p.color}; }
+    .heat-note { font-size: 10px; color: #555; margin-top: 3px; }
+    .storage-row { display: flex; gap: 8px; }
+    .storage-card { flex: 1; background: #222; border-radius: 10px; padding: 12px; display: flex; gap: 10px; align-items: flex-start; }
+    .storage-icon { font-size: 18px; flex-shrink: 0; }
+    .storage-text { font-size: 12px; color: #aaa; line-height: 1.5; }
+    .storage-text strong { color: #f0f0f0; display: block; margin-bottom: 2px; font-size: 12px; }
 
     .btn { display: block; background: #25d366; color: white; text-decoration: none; text-align: center; padding: 16px; border-radius: 14px; font-size: 15px; font-weight: 700; margin-top: 28px; }
     .footer { margin-top: 24px; color: #444; font-size: 11px; text-align: center; line-height: 1.7; }
@@ -591,19 +597,35 @@ app.get("/product/:flavor", (req, res) => {
 
       <!-- INSTRUCTIONS -->
       <div class="section">
-        <div class="section-label">Instrucciones</div>
-        <div class="instructions">
-          <div class="instr-row">
-            <span class="instr-icon">🔥</span>
-            <div class="instr-text"><strong>Cómo calentar</strong>Pasa el pollo a un plato antes de calentar. No calentar en el envase plástico.</div>
+        <div class="section-label">Instrucciones de Preparación</div>
+        <div class="heat-grid">
+          <div class="heat-card">
+            <span class="heat-icon">📡</span>
+            <div class="heat-method">Microondas</div>
+            <div class="heat-time">2 min</div>
+            <div class="heat-note">En plato, no en envase</div>
           </div>
-          <div class="instr-row">
-            <span class="instr-icon">❄️</span>
-            <div class="instr-text"><strong>Refrigeración</strong>Mantener siempre frío. Consumir dentro de los 6 días después de descongelado.</div>
+          <div class="heat-card">
+            <span class="heat-icon">🍳</span>
+            <div class="heat-method">Sartén</div>
+            <div class="heat-time">4–5 min</div>
+            <div class="heat-note">Fuego medio</div>
           </div>
-          <div class="instr-row">
-            <span class="instr-icon">🧊</span>
-            <div class="instr-text"><strong>Congelación</strong>Se puede congelar. Para descongelar, pasar a la nevera un día antes.</div>
+          <div class="heat-card">
+            <span class="heat-icon">💨</span>
+            <div class="heat-method">Air Fryer</div>
+            <div class="heat-time">6–8 min</div>
+            <div class="heat-note">180°C</div>
+          </div>
+        </div>
+        <div class="storage-row">
+          <div class="storage-card">
+            <span class="storage-icon">❄️</span>
+            <div class="storage-text"><strong>Nevera</strong>6 días desde descongelado. Mantener siempre frío.</div>
+          </div>
+          <div class="storage-card">
+            <span class="storage-icon">🧊</span>
+            <div class="storage-text"><strong>Congelador</strong>Se puede congelar. Descongelar en nevera un día antes.</div>
           </div>
         </div>
       </div>
