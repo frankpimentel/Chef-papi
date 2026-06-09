@@ -523,11 +523,12 @@ app.get("/product/:flavor", (req, res) => {
     .section-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; color: #555; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid #2a2a2a; }
 
     /* Nutrition */
-    .nutri-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-    .nutri-item { background: #222; border-radius: 12px; padding: 14px 10px; text-align: center; }
-    .nutri-val { font-size: 17px; font-weight: 800; color: ${p.color}; }
+    .nutri-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+    .nutri-item { background: #222; border-radius: 12px; padding: 14px 8px; text-align: center; }
+    .nutri-item.wide { grid-column: span 3; }
+    .nutri-val { font-size: 16px; font-weight: 800; color: ${p.color}; }
+    .nutri-val-big { font-size: 22px; font-weight: 800; color: ${p.color}; }
     .nutri-label { font-size: 10px; color: #666; margin-top: 3px; text-transform: uppercase; letter-spacing: .5px; }
-    .nutri-sub { font-size: 11px; color: #555; margin-top: 6px; padding-top: 6px; border-top: 1px solid #2a2a2a; display: flex; justify-content: space-between; }
 
     /* Ingredients */
     .ingredients ul { list-style: none; display: flex; flex-direction: column; gap: 8px; }
@@ -565,15 +566,13 @@ app.get("/product/:flavor", (req, res) => {
       <div class="section">
         <div class="section-label">Información Nutricional · ${n.weight}</div>
         <div class="nutri-grid">
-          <div class="nutri-item"><div class="nutri-val">${n.cals}</div><div class="nutri-label">Calorías</div></div>
+          <div class="nutri-item wide"><div class="nutri-val-big">${n.cals}</div><div class="nutri-label">Calorías</div></div>
           <div class="nutri-item"><div class="nutri-val">${n.protein}</div><div class="nutri-label">Proteína</div></div>
           <div class="nutri-item"><div class="nutri-val">${n.fat}</div><div class="nutri-label">Grasas Totales</div></div>
+          <div class="nutri-item"><div class="nutri-val">${n.saturated}</div><div class="nutri-label">Grasas Saturadas</div></div>
           <div class="nutri-item"><div class="nutri-val">${n.carbs}</div><div class="nutri-label">Carbohidratos</div></div>
-        </div>
-        <div class="nutri-sub">
-          <span>Grasas saturadas: ${n.saturated}</span>
-          <span>Azúcares: ${n.sugar}</span>
-          <span>Sodio: ${n.sodium}</span>
+          <div class="nutri-item"><div class="nutri-val">${n.sugar}</div><div class="nutri-label">Azúcares</div></div>
+          <div class="nutri-item"><div class="nutri-val">${n.sodium}</div><div class="nutri-label">Sodio</div></div>
         </div>
       </div>
 
