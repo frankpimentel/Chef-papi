@@ -544,7 +544,7 @@ app.get("/product/:flavor", (req, res) => {
     /* Instructions */
     .heat-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 10px; }
     .heat-card { background: #222; border-radius: 12px; padding: 16px 8px 12px; text-align: center; }
-    .heat-icon { font-size: 28px; display: block; margin-bottom: 8px; }
+    .heat-icon { display: flex; justify-content: center; margin-bottom: 8px; color: ${p.color}; }
     .heat-method { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #888; margin-bottom: 6px; }
     .heat-time { font-size: 18px; font-weight: 800; color: ${p.color}; }
     .heat-note { font-size: 10px; color: #555; margin-top: 3px; }
@@ -600,19 +600,19 @@ app.get("/product/:flavor", (req, res) => {
         <div class="section-label">Instrucciones de Preparación</div>
         <div class="heat-grid">
           <div class="heat-card">
-            <span class="heat-icon">📡</span>
+            <span class="heat-icon"><svg width="36" height="36" viewBox="0 0 36 36" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="8" width="30" height="20" rx="3"/><rect x="7" y="12" width="16" height="12" rx="1.5"/><circle cx="28" cy="15" r="1.5" fill="currentColor" stroke="none"/><circle cx="28" cy="22" r="1.5" fill="currentColor" stroke="none"/><line x1="7" y1="30" x2="11" y2="30"/><line x1="25" y1="30" x2="29" y2="30"/></svg></span>
             <div class="heat-method">Microondas</div>
             <div class="heat-time">2 min</div>
             <div class="heat-note">En plato, no en envase</div>
           </div>
           <div class="heat-card">
-            <span class="heat-icon">🍳</span>
+            <span class="heat-icon"><svg width="36" height="36" viewBox="0 0 36 36" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="16" cy="22" rx="12" ry="5"/><line x1="16" y1="17" x2="16" y2="10"/><line x1="16" y1="10" x2="28" y2="10"/><path d="M10 8 Q12 5 14 8"/><path d="M16 8 Q18 5 20 8"/></svg></span>
             <div class="heat-method">Sartén</div>
             <div class="heat-time">4–5 min</div>
             <div class="heat-note">Fuego medio</div>
           </div>
           <div class="heat-card">
-            <span class="heat-icon">💨</span>
+            <span class="heat-icon"><svg width="36" height="36" viewBox="0 0 36 36" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="12" width="22" height="18" rx="4"/><ellipse cx="18" cy="12" rx="8" ry="4"/><rect x="13" y="20" width="10" height="7" rx="2"/><circle cx="25" cy="17" r="2"/><line x1="18" y1="8" x2="18" y2="5"/></svg></span>
             <div class="heat-method">Air Fryer</div>
             <div class="heat-time">6–8 min</div>
             <div class="heat-note">180°C</div>
