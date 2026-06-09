@@ -36,42 +36,38 @@ const NUTRITION = {
   natural: {
     name: "Salt & Pepper",
     weight: "200g",
-    cals: "~310 kcal",
-    protein: "~63g",
-    fat: "~7g",
-    carbs: "~0g",
-    sugar: "~0g",
-    allergens: null,
+    cals: "~310 kcal", protein: "~63g", fat: "~7g",
+    saturated: "~2g", carbs: "~0g", sugar: "~0g", sodium: "~600mg",
+    ingredients: ["Pollo Topping al Grill", "Sal", "Pimienta Negra"],
+    allergens_contains: [],
+    allergens_may: ["Soya (Sazón Maggi)", "Gluten (posible)", "Sulfitos (posible)"],
   },
   pomodoro: {
     name: "Pomodoro",
     weight: "280g",
-    cals: "~368 kcal",
-    protein: "~61g",
-    fat: "~8.5g",
-    carbs: "~6.9g",
-    sugar: "~4.6g",
-    allergens: null,
+    cals: "~368 kcal", protein: "~61g", fat: "~8.5g",
+    saturated: "~2.4g", carbs: "~6.9g", sugar: "~4.6g", sodium: "~1,045mg",
+    ingredients: ["Pollo Topping al Grill (200g)", "Salsa Pomodoro (80g)"],
+    allergens_contains: [],
+    allergens_may: ["Soya (Sazón Maggi)", "Gluten (posible)", "Sulfitos (posible)"],
   },
   pesto: {
     name: "Pesto de Albahaca",
     weight: "280g",
-    cals: "~592 kcal",
-    protein: "~65g",
-    fat: "~38g",
-    carbs: "~2.5g",
-    sugar: "~0.4g",
-    allergens: "Lácteos (Queso Parmesano)",
+    cals: "~592 kcal", protein: "~65g", fat: "~38g",
+    saturated: "~9.6g", carbs: "~2.5g", sugar: "~0.4g", sodium: "~1,080mg",
+    ingredients: ["Pollo Topping al Grill (200g)", "Pesto de Albahaca (80g)", "Queso Parmesano"],
+    allergens_contains: ["Lácteos (Queso Parmesano)"],
+    allergens_may: ["Soya (Sazón Maggi)", "Gluten (posible)", "Sulfitos (posible)"],
   },
   bbq: {
     name: "BBQ Glaze",
     weight: "280g",
-    cals: "~439 kcal",
-    protein: "~61g",
-    fat: "~9.2g",
-    carbs: "~25.3g",
-    sugar: "~22.5g",
-    allergens: "Mostaza",
+    cals: "~439 kcal", protein: "~61g", fat: "~9.2g",
+    saturated: "~2.5g", carbs: "~25.3g", sugar: "~22.5g", sodium: "~1,230mg",
+    ingredients: ["Pollo Topping al Grill (200g)", "Salsa BBQ Glaze Premium (80g)"],
+    allergens_contains: ["Mostaza"],
+    allergens_may: ["Soya (Ketchup, Sazón Maggi)", "Gluten (posible)", "Sulfitos (posible)"],
   },
 };
 
@@ -496,7 +492,14 @@ const PRODUCT_PAGES = {
 app.get("/product/:flavor", (req, res) => {
   const p = PRODUCT_PAGES[req.params.flavor];
   if (!p) return res.status(404).send("Producto no encontrado");
-  const waLink = `https://wa.me/18098831687?text=${encodeURIComponent(`Hola! Quiero ordenar ${p.emoji} ${p.name}`)}`;
+  const n = p.nutri;
+  const containsHtml = n.allergens_contains.length
+    ? `<div class="alg-row alg-bad">⚠️ <strong>Contiene:</strong> ${n.allergens_contains.join(", ")}</div>`
+    : `<div class="alg-row alg-ok">✅ <strong>Sin alérgenos declarados</strong></div>`;
+  const mayHtml = n.allergens_may.map(a =>
+    `<div class="alg-row alg-warn">⚠️ <strong>Puede contener:</strong> ${a}</div>`
+  ).join("");
+  const ingredientsHtml = n.ingredients.map(i => `<li>${i}</li>`).join("");
   res.send(`<!DOCTYPE html>
 <html lang="es">
 <head>
@@ -507,50 +510,178 @@ app.get("/product/:flavor", (req, res) => {
   <meta property="og:description" content="${p.description}"/>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: -apple-system, sans-serif; background: #111; color: #eee; min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px; }
-    .card { background: #1a1a1a; border-radius: 20px; max-width: 400px; width: 100%; overflow: hidden; }
-    .hero { background: ${p.color}22; border-bottom: 1px solid #333; padding: 48px 24px; text-align: center; font-size: 80px; }
-    .body { padding: 28px 24px; }
-    .brand { color: ${p.color}; font-size: 13px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
-    h1 { font-size: 26px; font-weight: bold; margin-bottom: 12px; }
-    .desc { color: #aaa; line-height: 1.6; margin-bottom: 20px; }
-    .price { font-size: 22px; font-weight: bold; color: ${p.color}; margin-bottom: 20px; }
-    .nutri { background: #222; border-radius: 12px; padding: 16px; margin-bottom: 20px; }
-    .nutri-title { color: #888; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; }
+    body { font-family: -apple-system, 'Segoe UI', sans-serif; background: #0f0f0f; color: #f0f0f0; min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding: 24px 16px 48px; }
+    .card { background: #1a1a1a; border-radius: 24px; max-width: 420px; width: 100%; overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,.5); }
+    .hero { background: linear-gradient(135deg, ${p.color}33, ${p.color}11); border-bottom: 1px solid #2a2a2a; padding: 52px 24px 40px; text-align: center; }
+    .hero-emoji { font-size: 80px; display: block; margin-bottom: 16px; }
+    .brand { color: ${p.color}; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 6px; }
+    .hero h1 { font-size: 28px; font-weight: 800; }
+    .hero p { color: #999; font-size: 14px; margin-top: 8px; line-height: 1.5; }
+    .body { padding: 0 24px 28px; }
+
+    .section { margin-top: 24px; }
+    .section-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; color: #555; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid #2a2a2a; }
+
+    /* Nutrition */
     .nutri-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-    .nutri-item { text-align: center; }
-    .nutri-val { font-size: 18px; font-weight: bold; color: ${p.color}; }
-    .nutri-label { font-size: 11px; color: #666; margin-top: 2px; }
-    .allergen { color: #f59e0b; font-size: 12px; margin-top: 10px; }
-    .detail { color: #555; font-size: 12px; margin-bottom: 20px; }
-    .btn { display: block; background: #25d366; color: white; text-decoration: none; text-align: center; padding: 16px; border-radius: 12px; font-size: 16px; font-weight: bold; }
-    .btn:hover { background: #20b858; }
-    .footer { margin-top: 24px; color: #555; font-size: 12px; text-align: center; }
+    .nutri-item { background: #222; border-radius: 12px; padding: 14px 10px; text-align: center; }
+    .nutri-val { font-size: 17px; font-weight: 800; color: ${p.color}; }
+    .nutri-label { font-size: 10px; color: #666; margin-top: 3px; text-transform: uppercase; letter-spacing: .5px; }
+    .nutri-sub { font-size: 11px; color: #555; margin-top: 6px; padding-top: 6px; border-top: 1px solid #2a2a2a; display: flex; justify-content: space-between; }
+
+    /* Ingredients */
+    .ingredients ul { list-style: none; display: flex; flex-direction: column; gap: 8px; }
+    .ingredients li { background: #222; border-radius: 10px; padding: 10px 14px; font-size: 13px; color: #ccc; display: flex; align-items: center; gap: 8px; }
+    .ingredients li::before { content: "🍗"; font-size: 14px; }
+
+    /* Allergens */
+    .alg-row { font-size: 12px; padding: 9px 12px; border-radius: 8px; margin-bottom: 6px; }
+    .alg-bad  { background: #f59e0b18; color: #f59e0b; border: 1px solid #f59e0b44; }
+    .alg-warn { background: #ffffff08; color: #999; border: 1px solid #333; }
+    .alg-ok   { background: #22c55e18; color: #22c55e; border: 1px solid #22c55e44; }
+
+    /* Instructions */
+    .instructions { display: flex; flex-direction: column; gap: 8px; }
+    .instr-row { display: flex; gap: 12px; align-items: flex-start; background: #222; border-radius: 10px; padding: 12px 14px; }
+    .instr-icon { font-size: 20px; flex-shrink: 0; }
+    .instr-text { font-size: 13px; color: #ccc; line-height: 1.5; }
+    .instr-text strong { color: #f0f0f0; display: block; margin-bottom: 2px; }
+
+    .btn { display: block; background: #25d366; color: white; text-decoration: none; text-align: center; padding: 16px; border-radius: 14px; font-size: 15px; font-weight: 700; margin-top: 28px; }
+    .footer { margin-top: 24px; color: #444; font-size: 11px; text-align: center; line-height: 1.7; }
   </style>
 </head>
 <body>
   <div class="card">
-    <div class="hero">${p.emoji}</div>
-    <div class="body">
-      <div class="brand">Chef Papi 🍗</div>
+    <div class="hero">
+      <span class="hero-emoji">${p.emoji}</span>
+      <div class="brand">Chef Papi</div>
       <h1>${p.name}</h1>
-      <div class="desc">${p.description}</div>
-      <div class="price">${p.price}</div>
-      <div class="nutri">
-        <div class="nutri-title">Información Nutricional · ${p.nutri.weight}</div>
+      <p>${p.description}</p>
+    </div>
+    <div class="body">
+
+      <!-- NUTRITION -->
+      <div class="section">
+        <div class="section-label">Información Nutricional · ${n.weight}</div>
         <div class="nutri-grid">
-          <div class="nutri-item"><div class="nutri-val">${p.nutri.cals}</div><div class="nutri-label">Calorías</div></div>
-          <div class="nutri-item"><div class="nutri-val">${p.nutri.protein}</div><div class="nutri-label">Proteína</div></div>
-          <div class="nutri-item"><div class="nutri-val">${p.nutri.fat}</div><div class="nutri-label">Grasas</div></div>
-          <div class="nutri-item"><div class="nutri-val">${p.nutri.carbs}</div><div class="nutri-label">Carbohidratos</div></div>
+          <div class="nutri-item"><div class="nutri-val">${n.cals}</div><div class="nutri-label">Calorías</div></div>
+          <div class="nutri-item"><div class="nutri-val">${n.protein}</div><div class="nutri-label">Proteína</div></div>
+          <div class="nutri-item"><div class="nutri-val">${n.fat}</div><div class="nutri-label">Grasas Totales</div></div>
+          <div class="nutri-item"><div class="nutri-val">${n.carbs}</div><div class="nutri-label">Carbohidratos</div></div>
         </div>
-        ${p.nutri.allergens ? `<div class="allergen">⚠️ Contiene: ${p.nutri.allergens}</div>` : ""}
+        <div class="nutri-sub">
+          <span>Grasas saturadas: ${n.saturated}</span>
+          <span>Azúcares: ${n.sugar}</span>
+          <span>Sodio: ${n.sodium}</span>
+        </div>
       </div>
-      <div class="detail">Mínimo 3 unidades · Delivery RD$170</div>
-      <a href="${waLink}" class="btn">💬 Ordenar por WhatsApp</a>
+
+      <!-- INGREDIENTS -->
+      <div class="section ingredients">
+        <div class="section-label">Ingredientes</div>
+        <ul>${ingredientsHtml}</ul>
+      </div>
+
+      <!-- ALLERGENS -->
+      <div class="section">
+        <div class="section-label">Alérgenos</div>
+        ${containsHtml}
+        ${mayHtml}
+      </div>
+
+      <!-- INSTRUCTIONS -->
+      <div class="section">
+        <div class="section-label">Instrucciones</div>
+        <div class="instructions">
+          <div class="instr-row">
+            <span class="instr-icon">🔥</span>
+            <div class="instr-text"><strong>Cómo calentar</strong>Pasa el pollo a un plato antes de calentar. No calentar en el envase plástico.</div>
+          </div>
+          <div class="instr-row">
+            <span class="instr-icon">❄️</span>
+            <div class="instr-text"><strong>Refrigeración</strong>Mantener siempre frío. Consumir dentro de los 6 días después de descongelado.</div>
+          </div>
+          <div class="instr-row">
+            <span class="instr-icon">🧊</span>
+            <div class="instr-text"><strong>Congelación</strong>Se puede congelar. Para descongelar, pasar a la nevera un día antes.</div>
+          </div>
+        </div>
+      </div>
+
+      <a href="https://wa.me/18098831687" class="btn">💬 Ordenar por WhatsApp</a>
     </div>
   </div>
-  <div class="footer">Solo entregamos en Santo Domingo · Pedidos antes 3:30PM llegan hoy</div>
+  <div class="footer">Chef Papi · Solo entregamos en Santo Domingo<br/>Pedidos antes de las 3:30PM llegan hoy</div>
+</body>
+</html>`);
+});
+
+// ── QR CODES ─────────────────────────────────────────────────
+const QRCode = require("qrcode");
+const BASE_URL = "https://chef-papi-production.up.railway.app";
+
+app.get("/qr/:flavor", async (req, res) => {
+  const flavor = req.params.flavor;
+  if (!PRODUCT_PAGES[flavor]) return res.status(404).send("Not found");
+  const url = `${BASE_URL}/product/${flavor}`;
+  try {
+    const qr = await QRCode.toBuffer(url, { width: 400, margin: 2, color: { dark: "#000000", light: "#ffffff" } });
+    res.set("Content-Type", "image/png");
+    res.send(qr);
+  } catch (e) {
+    res.status(500).send("QR error");
+  }
+});
+
+app.get("/qrcodes", (req, res) => {
+  const flavors = [
+    { id: "natural",  name: "Salt & Pepper",    emoji: "🧂", color: "#f97316" },
+    { id: "pomodoro", name: "Pomodoro",           emoji: "🍅", color: "#ef4444" },
+    { id: "pesto",    name: "Pesto de Albahaca", emoji: "🌿", color: "#22c55e" },
+    { id: "bbq",      name: "BBQ Glaze",          emoji: "🔥", color: "#f59e0b" },
+  ];
+  const cards = flavors.map(f => `
+    <div class="card">
+      <div class="top" style="background:${f.color}22; border-bottom:2px solid ${f.color}44;">
+        <span class="emoji">${f.emoji}</span>
+        <div class="name">${f.name}</div>
+        <div class="url">${BASE_URL}/product/${f.id}</div>
+      </div>
+      <div class="qr-wrap">
+        <img src="/qr/${f.id}" alt="QR ${f.name}" />
+      </div>
+    </div>`).join("");
+  res.send(`<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8"/>
+  <title>Chef Papi — QR Codes</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, 'Segoe UI', sans-serif; background: #f8fafc; padding: 40px 24px; }
+    h1 { text-align: center; font-size: 22px; font-weight: 800; color: #0f172a; margin-bottom: 6px; }
+    .sub { text-align: center; color: #64748b; font-size: 13px; margin-bottom: 36px; }
+    .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 24px; max-width: 700px; margin: 0 auto; }
+    .card { background: #fff; border-radius: 16px; overflow: hidden; border: 1.5px solid #e2e8f0; box-shadow: 0 2px 8px rgba(0,0,0,.05); }
+    .top { padding: 20px; text-align: center; }
+    .emoji { font-size: 40px; display: block; margin-bottom: 8px; }
+    .name { font-size: 16px; font-weight: 800; color: #0f172a; }
+    .url { font-size: 10px; color: #94a3b8; margin-top: 4px; word-break: break-all; }
+    .qr-wrap { padding: 20px; display: flex; justify-content: center; background: #fff; }
+    .qr-wrap img { width: 180px; height: 180px; border-radius: 8px; }
+    .print-btn { display: block; margin: 32px auto 0; padding: 12px 28px; background: #0f172a; color: #fff; border: none; border-radius: 10px; font-size: 14px; font-weight: 700; cursor: pointer; }
+    @media print {
+      .print-btn { display: none; }
+      body { background: white; padding: 0; }
+    }
+  </style>
+</head>
+<body>
+  <h1>🍗 Chef Papi — QR Codes</h1>
+  <p class="sub">Escanea para ver ingredientes, info nutricional e instrucciones</p>
+  <div class="grid">${cards}</div>
+  <button class="print-btn" onclick="window.print()">🖨️ Imprimir QR Codes</button>
 </body>
 </html>`);
 });
