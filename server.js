@@ -647,7 +647,7 @@ app.get("/qr/:flavor", async (req, res) => {
   if (!PRODUCT_PAGES[flavor]) return res.status(404).send("Not found");
   const url = `${BASE_URL}/product/${flavor}`;
   try {
-    const qr = await QRCode.toBuffer(url, { width: 400, margin: 2, color: { dark: "#000000", light: "#ffffff" } });
+    const qr = await QRCode.toBuffer(url, { width: 400, margin: 2, color: { dark: "#ffffff", light: "#000000" } });
     res.set("Content-Type", "image/png");
     res.send(qr);
   } catch (e) {
