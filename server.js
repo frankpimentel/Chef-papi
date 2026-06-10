@@ -572,33 +572,6 @@ app.get("/product/:flavor", (req, res) => {
     </div>
     <div class="body">
 
-      <!-- NUTRITION -->
-      <div class="section">
-        <div class="section-label">Información Nutricional · ${n.weight}</div>
-        <div class="nutri-grid">
-          <div class="nutri-item wide"><div class="nutri-val-big">${n.cals}</div><div class="nutri-label">Calorías</div></div>
-          <div class="nutri-item"><div class="nutri-val">${n.protein}</div><div class="nutri-label">Proteína</div></div>
-          <div class="nutri-item"><div class="nutri-val">${n.fat}</div><div class="nutri-label">Grasas Totales</div></div>
-          <div class="nutri-item"><div class="nutri-val">${n.saturated}</div><div class="nutri-label">Grasas Saturadas</div></div>
-          <div class="nutri-item"><div class="nutri-val">${n.carbs}</div><div class="nutri-label">Carbohidratos</div></div>
-          <div class="nutri-item"><div class="nutri-val">${n.sugar}</div><div class="nutri-label">Azúcares</div></div>
-          <div class="nutri-item"><div class="nutri-val">${n.sodium}</div><div class="nutri-label">Sodio</div></div>
-        </div>
-      </div>
-
-      <!-- INGREDIENTS -->
-      <div class="section ingredients">
-        <div class="section-label">Ingredientes</div>
-        <ul>${ingredientsHtml}</ul>
-      </div>
-
-      <!-- ALLERGENS -->
-      <div class="section">
-        <div class="section-label">Alérgenos</div>
-        ${containsHtml}
-        ${mayHtml}
-      </div>
-
       <!-- INSTRUCTIONS -->
       <div class="section">
         <div class="section-label">Instrucciones de Preparación</div>
@@ -640,6 +613,33 @@ app.get("/product/:flavor", (req, res) => {
             <div class="storage-text"><strong>Congelador</strong>Se puede congelar. Descongelar en nevera un día antes.</div>
           </div>
         </div>
+      </div>
+
+      <!-- NUTRITION -->
+      <div class="section">
+        <div class="section-label">Información Nutricional · ${n.weight}</div>
+        <div class="nutri-grid">
+          <div class="nutri-item wide"><div class="nutri-val-big">${n.cals}</div><div class="nutri-label">Calorías</div></div>
+          <div class="nutri-item"><div class="nutri-val">${n.protein}</div><div class="nutri-label">Proteína</div></div>
+          <div class="nutri-item"><div class="nutri-val">${n.fat}</div><div class="nutri-label">Grasas Totales</div></div>
+          <div class="nutri-item"><div class="nutri-val">${n.saturated}</div><div class="nutri-label">Grasas Saturadas</div></div>
+          <div class="nutri-item"><div class="nutri-val">${n.carbs}</div><div class="nutri-label">Carbohidratos</div></div>
+          <div class="nutri-item"><div class="nutri-val">${n.sugar}</div><div class="nutri-label">Azúcares</div></div>
+          <div class="nutri-item"><div class="nutri-val">${n.sodium}</div><div class="nutri-label">Sodio</div></div>
+        </div>
+      </div>
+
+      <!-- INGREDIENTS -->
+      <div class="section ingredients">
+        <div class="section-label">Ingredientes</div>
+        <ul>${ingredientsHtml}</ul>
+      </div>
+
+      <!-- ALLERGENS -->
+      <div class="section">
+        <div class="section-label">Alérgenos</div>
+        ${containsHtml}
+        ${mayHtml}
       </div>
 
       <a href="https://wa.me/18098831687" class="btn">💬 Ordenar por WhatsApp</a>
