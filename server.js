@@ -542,6 +542,10 @@ app.get("/product/:flavor", (req, res) => {
     .alg-ok   { background: #22c55e18; color: #22c55e; border: 1px solid #22c55e44; }
 
     /* Instructions */
+    .defrost-banner { display: flex; gap: 12px; align-items: flex-start; background: #1e3a5f; border: 1px solid #3b82f644; border-radius: 12px; padding: 14px; margin-bottom: 10px; }
+    .defrost-banner strong { color: #93c5fd; display: block; font-size: 13px; margin-bottom: 3px; }
+    .defrost-banner div { font-size: 12px; color: #94a3b8; line-height: 1.6; }
+    .defrost-step-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #555; margin-bottom: 8px; }
     .heat-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 10px; }
     .heat-card { background: #222; border-radius: 12px; padding: 16px 8px 12px; text-align: center; }
     .heat-icon { display: flex; justify-content: center; margin-bottom: 8px; color: ${p.color}; }
@@ -598,6 +602,14 @@ app.get("/product/:flavor", (req, res) => {
       <!-- INSTRUCTIONS -->
       <div class="section">
         <div class="section-label">Instrucciones de Preparación</div>
+        <div class="defrost-banner">
+          <span style="font-size:20px">🧊</span>
+          <div>
+            <strong>Paso 1 — Descongelar primero</strong>
+            Descongela en la nevera la noche anterior. ¿Tienes prisa? Sumerge el envase cerrado en agua tibia por 15–20 minutos.
+          </div>
+        </div>
+        <div class="defrost-step-label">Paso 2 — Calentar</div>
         <div class="heat-grid">
           <div class="heat-card">
             <span class="heat-icon"><svg width="36" height="36" viewBox="0 0 36 36" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="8" width="30" height="20" rx="3"/><rect x="7" y="12" width="16" height="12" rx="1.5"/><circle cx="28" cy="15" r="1.5" fill="currentColor" stroke="none"/><circle cx="28" cy="22" r="1.5" fill="currentColor" stroke="none"/><line x1="7" y1="30" x2="11" y2="30"/><line x1="25" y1="30" x2="29" y2="30"/></svg></span>
